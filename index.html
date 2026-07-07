@@ -467,11 +467,38 @@ async function chargerRuches() {
   try {
     const r   = await fetch(API + '/api/ruches');
     const raw = await r.json();
-    ruchesData = raw;
+
+    // Support des deux formats : v1 (objet) et v2 (tableau PostgreSQL)
+    if (Array.isArray(raw)) {
+      // Format v2 : [{ruche_id, ruche_nom, poids, temperature, hygrometrie, batterie, date_mesure}, ...]
+      ruchesData = {};
+      for (const row of raw) {
+        const id = row.ruche_id;
+        ruchesData[id] = {
+          nom: row.ruche_nom,
+          dernierReleve: {
+            date:        row.date_mesure,
+            poids:       parseFloat(row.poids),
+            temperature: parseFloat(row.temperature),
+            hygrometrie: parseFloat(row.hygrometrie),
+            batterie:    row.batterie != null ? parseFloat(row.batterie) : null
+          },
+          historique: [{ // sera enrichi au clic via /historique
+            date:  row.date_mesure,
+            poids: parseFloat(row.poids)
+          }]
+        };
+      }
+    } else {
+      // Format v1 : {id: {nom, dernierReleve, historique}}
+      ruchesData = raw;
+    }
+
     afficherRuches();
   } catch(e) {
+    console.error('Erreur chargement ruches:', e);
     document.getElementById('ruches-liste').innerHTML =
-      `<div class="banner-actu">⚠️ Impossible de joindre le serveur. Vérifie ta connexion.</div>`;
+      `<div class="banner-actu">⚠️ Impossible de joindre le serveur. Vérifie ta connexion.<br><small>${e.message}</small></div>`;
   }
 }
 
@@ -598,10 +625,18 @@ async function chargerHistorique(id, jours) {
     try {
       const url = API + '/api/ruches/' + id + '/historique' + (jours > 0 ? '?jours=' + jours : '');
       const r   = await fetch(url);
-      histo = await r.json();
+      const raw = await r.json();
+
+      // Normaliser : accepter tableau v2 {date_mesure} ou v1 {date}
+      histo = Array.isArray(raw) ? raw.map(p => ({
+        date:        p.date_mesure || p.date,
+        poids:       parseFloat(p.poids),
+        temperature: parseFloat(p.temperature),
+        hygrometrie: parseFloat(p.hygrometrie)
+      })) : (ruchesData[id]?.historique || []);
+
       histoCache[key] = histo;
     } catch {
-      // Fallback sur les données en cache local
       histo = (ruchesData[id]?.historique || []);
     }
   }
