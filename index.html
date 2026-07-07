@@ -90,6 +90,7 @@ html,body{
   background:var(--carte); border:1px solid var(--bord);
   border-radius:14px; padding:16px;
   margin:12px 14px 0;
+  overflow:hidden;
 }
 .card-warn{ background:#231F18; border-color:#4A3A1E; }
 .card h2{ font-size:15px; font-weight:700; margin:0 0 2px; }
@@ -109,7 +110,8 @@ html,body{
 .delta{ font-size:12px; font-weight:600; margin-top:2px; }
 .delta.pos{ color:var(--vert); }
 .delta.neg{ color:var(--rouge); }
-.mini-chart{ height:54px; margin-top:10px; }
+.mini-chart{ height:54px; margin-top:10px; max-height:54px; display:block; }
+.card{ min-height:0; }
 .ruche-meta{ display:flex; gap:14px; margin-top:10px; font-size:12px; color:var(--gris); }
 .ruche-meta b{ color:var(--texte); }
 
@@ -556,6 +558,7 @@ function afficherRuches() {
     const chartId = 'mini-' + id;
     const battHtml = (r.batterie != null && !isNaN(r.batterie))
       ? `<span>🔋 <b>${r.batterie}%</b></span>` : '';
+    const showChart = histo.length > 1;
 
     html += `
     <div class="card ${warn ? 'card-warn' : ''}" data-id="${id}" style="cursor:pointer;">
@@ -575,7 +578,7 @@ function afficherRuches() {
           <div class="delta ${dCls}">${dEmoji} ${dSign}${delta.toFixed(1)} kg / sem.</div>
         </div>
       </div>
-      <canvas class="mini-chart" id="${chartId}"></canvas>
+      <canvas class="mini-chart" id="${chartId}" style="${showChart?'':'display:none;'}"></canvas>
       <div class="ruche-meta">
         <span>🌡️ <b>${r.temperature}°C</b></span>
         <span>💧 <b>${r.hygrometrie}%</b></span>
@@ -592,6 +595,7 @@ function afficherRuches() {
     const el = document.getElementById('mini-' + id);
     if (!el) continue;
     const vals  = (data.historique || []).map(h => h.poids);
+    if (vals.length < 2) continue;
     const color = (data.dernierReleve?.poids || 0) < 5 ? '#D08469' : '#E0A94A';
     makeMini(el, vals, color);
   }
