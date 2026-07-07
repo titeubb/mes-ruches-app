@@ -483,11 +483,21 @@ async function chargerRuches() {
             hygrometrie: parseFloat(row.hygrometrie),
             batterie:    row.batterie != null ? parseFloat(row.batterie) : null
           },
-          historique: [{ // sera enrichi au clic via /historique
+          historique: [{
             date:  row.date_mesure,
             poids: parseFloat(row.poids)
           }]
         };
+      }
+      // S'assurer que les 3 ruches connues ont au moins une entrée vide
+      for (const id of ['7B464','7B462','7B45C']) {
+        if (!ruchesData[id]) {
+          ruchesData[id] = {
+            nom: RUCHES_META[id]?.nom || id,
+            dernierReleve: null,
+            historique: []
+          };
+        }
       }
     } else {
       // Format v1 : {id: {nom, dernierReleve, historique}}
@@ -515,12 +525,26 @@ function afficherRuches() {
   document.getElementById('top-sub').textContent =
     derniere ? '3 ruchers · ' + formatDate(derniere) : '3 ruchers';
 
-  // Rendu des cartes
+  // Rendu des cartes — toujours dans cet ordre
+  const ORDRE = ['7B464', '7B462', '7B45C'];
   let html = '';
-  for (const [id, data] of Object.entries(ruchesData)) {
+  for (const id of ORDRE) {
+    const data = ruchesData[id];
+    if (!data) continue;
     const meta  = RUCHES_META[id] || { nom: id, emoji: '🐝' };
     const r     = data.dernierReleve;
-    if (!r) continue;
+    if (!r) {
+      html += `<div class="card" style="opacity:.5;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:20px;">${meta.emoji}</span>
+          <div>
+            <div style="font-weight:700;">${meta.nom}</div>
+            <div class="sub">Aucune donnée disponible</div>
+          </div>
+        </div>
+      </div>`;
+      continue;
+    }
 
     const histo = (data.historique || []).map(h => h.poids);
     const delta = data.historique?.length > 1
@@ -530,6 +554,8 @@ function afficherRuches() {
     const dEmoji = delta > 0 ? '▲' : delta < 0 ? '▼' : '—';
     const warn  = r.poids < 5 || r.temperature > 45;
     const chartId = 'mini-' + id;
+    const battHtml = (r.batterie != null && !isNaN(r.batterie))
+      ? `<span>🔋 <b>${r.batterie}%</b></span>` : '';
 
     html += `
     <div class="card ${warn ? 'card-warn' : ''}" data-id="${id}" style="cursor:pointer;">
@@ -553,7 +579,7 @@ function afficherRuches() {
       <div class="ruche-meta">
         <span>🌡️ <b>${r.temperature}°C</b></span>
         <span>💧 <b>${r.hygrometrie}%</b></span>
-        ${r.batterie != null ? `<span>🔋 <b>${r.batterie}%</b></span>` : ''}
+        ${battHtml}
       </div>
     </div>`;
   }
