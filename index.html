@@ -575,7 +575,7 @@ async function chargerHistorique(id,jours){
   if(pts.length>MAX){ const step=Math.ceil(pts.length/MAX); pts=pts.filter((_,i)=>i%step===0); }
 
   const labels    = pts.map(p=>formatDateCourt(p.date));
-  const labelsRaw = pts.map(p=>formatDate(p.date));
+  const labelsRaw = pts.map(p=>p.date); // date ISO brute pour le curseur
   const poids=pts.map(p=>p.poids);
   const temp=pts.map(p=>p.temperature);
   const hygro=pts.map(p=>p.hygrometrie<=100?p.hygrometrie:null);
@@ -597,35 +597,41 @@ async function chargerHistorique(id,jours){
 }
 
 // ── GRAPHIQUES ───────────────────────────────────────────────────────
-// Données brutes pour le curseur
-let _cursorLabelsRaw = [];
-
-function makeChart(id,labels,data,color,maxTicks, isPoids=false){
+function makeChart(id,labels,data,color,maxTicks, hasCursor=false, unite=''){
   const ctx=document.getElementById(id); if(!ctx) return null;
 
+  // Créer une bulle dédiée par graphique
+  let bubble, dateEl, valEl;
+  if(hasCursor){
+    // Supprimer bulle existante pour ce canvas
+    const old = document.getElementById('bubble-'+id);
+    if(old) old.remove();
+    bubble = document.createElement('div');
+    bubble.id = 'bubble-'+id;
+    bubble.style.cssText = `display:none;background:#1B211C;border:1px solid ${color};
+      border-radius:10px;padding:7px 11px;position:absolute;z-index:50;pointer-events:none;
+      font-size:12px;line-height:1.6;box-shadow:0 2px 12px rgba(0,0,0,.4);min-width:130px;`;
+    bubble.innerHTML = `<div class="b-date" style="color:#7E8A7E;"></div>
+      <div class="b-val" style="color:${color};font-weight:700;font-size:15px;"></div>`;
+    ctx.parentElement.style.position = 'relative';
+    ctx.parentElement.appendChild(bubble);
+    dateEl = bubble.querySelector('.b-date');
+    valEl  = bubble.querySelector('.b-val');
+  }
+
   const crosshairPlugin = {
-    id:'crosshair',
+    id:'crosshair-'+id,
     afterDraw(chart){
       if(chart._cursorX==null || chart._cursorY==null) return;
       const {ctx:c,chartArea:{top,bottom}}=chart;
       c.save();
-      // Ligne verticale
-      c.strokeStyle='rgba(224,169,74,0.4)';
-      c.lineWidth=1;
-      c.setLineDash([4,4]);
-      c.beginPath();
-      c.moveTo(chart._cursorX,top);
-      c.lineTo(chart._cursorX,bottom);
-      c.stroke();
-      // Point circulaire
+      c.strokeStyle='rgba(200,200,200,0.25)';
+      c.lineWidth=1; c.setLineDash([4,4]);
+      c.beginPath(); c.moveTo(chart._cursorX,top); c.lineTo(chart._cursorX,bottom); c.stroke();
       c.setLineDash([]);
-      c.beginPath();
-      c.arc(chart._cursorX, chart._cursorY, 6, 0, Math.PI*2);
-      c.fillStyle='#E0A94A';
-      c.fill();
-      c.strokeStyle='#1B211C';
-      c.lineWidth=2;
-      c.stroke();
+      c.beginPath(); c.arc(chart._cursorX,chart._cursorY,5,0,Math.PI*2);
+      c.fillStyle=color; c.fill();
+      c.strokeStyle='#1B211C'; c.lineWidth=2; c.stroke();
       c.restore();
     }
   };
@@ -639,11 +645,7 @@ function makeChart(id,labels,data,color,maxTicks, isPoids=false){
       interaction:{mode:'index',intersect:false},
       plugins:{
         legend:{display:false},
-        tooltip:{
-          enabled: !isPoids, // désactivé sur poids (on gère manuellement)
-          backgroundColor:'#1B211C',titleColor:'#F3E9D2',
-          bodyColor:'#E0A94A',borderColor:'#333D33',borderWidth:1
-        }
+        tooltip:{enabled:false}
       },
       scales:{
         x:{ticks:{color:'#7E8A7E',maxTicksLimit:maxTicks,font:{size:9}},grid:{color:'#2A322B'}},
@@ -651,56 +653,51 @@ function makeChart(id,labels,data,color,maxTicks, isPoids=false){
       },
       animation:false
     },
-    plugins: isPoids ? [crosshairPlugin] : []
+    plugins: hasCursor ? [crosshairPlugin] : []
   });
 
-  // Curseur interactif sur le graphique poids
-  if(isPoids){
-    const bubble = document.getElementById('cursor-bubble');
-    const dateEl  = document.getElementById('cursor-date');
-    const poidsEl = document.getElementById('cursor-poids');
-    const container = ctx.parentElement;
-
+  if(hasCursor){
     function showCursor(e){
       const rect = ctx.getBoundingClientRect();
       const clientX = e.touches ? e.touches[0].clientX : e.clientX;
       const clientY = e.touches ? e.touches[0].clientY : e.clientY;
       const x = clientX - rect.left;
       const y = clientY - rect.top;
-
       const points = chart.getElementsAtEventForMode(
-        {native:{clientX:clientX,clientY:clientY}, offsetX:x, offsetY:y},
+        {native:{clientX,clientY},offsetX:x,offsetY:y},
         'index',{intersect:false},false
       );
       if(!points.length) return;
-
-      const idx   = points[0].index;
-      const poids = data[idx];
-      const label = _cursorLabelsRaw[idx] || labels[idx];
-
-      if(poids==null||isNaN(poids)) return;
+      const idx = points[0].index;
+      const val = data[idx];
+      if(val==null||isNaN(val)) return;
 
       chart._cursorX = points[0].element.x;
+      chart._cursorY = points[0].element.y;
       chart.draw();
 
-      dateEl.textContent  = label;
-      poidsEl.textContent = parseFloat(poids).toFixed(2)+' kg';
+      const raw = _cursorLabelsRaw[idx];
+      const d   = new Date(raw);
+      const dateStr = isNaN(d) ? (raw||'') :
+        d.toLocaleDateString('fr',{day:'2-digit',month:'short',year:'numeric'});
+      const heureStr = isNaN(d) ? '' :
+        d.toLocaleTimeString('fr',{hour:'2-digit',minute:'2-digit'});
 
-      // Positionner la bulle
-      const bW = 160;
-      let bLeft = x + rect.left - container.getBoundingClientRect().left + 10;
-      if(bLeft + bW > container.offsetWidth) bLeft = bLeft - bW - 20;
-      bubble.style.left   = bLeft+'px';
-      bubble.style.top    = Math.max(0, y - 30)+'px';
+      dateEl.innerHTML = `${dateStr} <span style="color:${color}">${heureStr}</span>`;
+      valEl.textContent = parseFloat(val).toFixed(unite==='kg'?2:1)+' '+unite;
+
+      const bW = 150;
+      let bLeft = x + 10;
+      if(bLeft + bW > ctx.parentElement.offsetWidth) bLeft = x - bW - 10;
+      bubble.style.left   = Math.max(0,bLeft)+'px';
+      bubble.style.top    = Math.max(0,y-40)+'px';
       bubble.style.display= 'block';
     }
-
     function hideCursor(){
       bubble.style.display='none';
-      chart._cursorX=null;
+      chart._cursorX=null; chart._cursorY=null;
       chart.draw();
     }
-
     ctx.addEventListener('mousemove',  showCursor);
     ctx.addEventListener('touchmove',  e=>{e.preventDefault();showCursor(e);},{passive:false});
     ctx.addEventListener('mouseleave', hideCursor);
@@ -710,14 +707,18 @@ function makeChart(id,labels,data,color,maxTicks, isPoids=false){
   return chart;
 }
 
+// Données brutes pour le curseur (partagées entre graphiques)
+let _cursorLabelsRaw = [];  return chart;
+}
+
 function dessinerDetailCharts(labels,labelsRaw,poids,temp,hygro){
   _cursorLabelsRaw = labelsRaw;
   if(chartPoids) chartPoids.destroy();
   if(chartTemp)  chartTemp.destroy();
   if(chartHygro) chartHygro.destroy();
-  chartPoids=makeChart('d-poids',labels,poids,'#E0A94A',8, true);
-  chartTemp =makeChart('d-temp', labels,temp, '#D08469',4);
-  chartHygro=makeChart('d-hygro',labels,hygro,'#7BA3C9',4);
+  chartPoids=makeChart('d-poids',labels,poids,'#E0A94A',8, true, 'kg');
+  chartTemp =makeChart('d-temp', labels,temp, '#D08469',4, true, '°C');
+  chartHygro=makeChart('d-hygro',labels,hygro,'#7BA3C9',4, true, '%');
 }
 function makeMini(el,data,color){
   new Chart(el,{type:'line',data:{labels:data.map((_,i)=>i),datasets:[{data,borderColor:color,
