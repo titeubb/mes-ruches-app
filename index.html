@@ -193,13 +193,6 @@ html,body{margin:0;padding:0;background:var(--fond);color:var(--texte);
   </div>
   <div class="chart-card" style="margin-top:12px;">
     <h3>⚖️ Poids (kg)</h3>
-    <!-- Bulle curseur -->
-    <div id="cursor-bubble" style="display:none;background:#1B211C;border:1px solid #E0A94A;
-      border-radius:10px;padding:8px 12px;position:absolute;z-index:50;pointer-events:none;
-      font-size:12px;line-height:1.6;box-shadow:0 2px 12px rgba(0,0,0,.4);">
-      <div id="cursor-date" style="color:#7E8A7E;"></div>
-      <div id="cursor-poids" style="color:#E0A94A;font-weight:700;font-size:15px;"></div>
-    </div>
     <div class="chart-box" style="position:relative;"><canvas id="d-poids"></canvas></div>
   </div>
   <div class="chart-card" style="margin-top:10px;">
@@ -597,6 +590,9 @@ async function chargerHistorique(id,jours){
 }
 
 // ── GRAPHIQUES ───────────────────────────────────────────────────────
+// Données brutes pour le curseur (partagées entre graphiques)
+let _cursorLabelsRaw = [];
+
 function makeChart(id,labels,data,color,maxTicks, hasCursor=false, unite=''){
   const ctx=document.getElementById(id); if(!ctx) return null;
 
@@ -708,8 +704,7 @@ function makeChart(id,labels,data,color,maxTicks, hasCursor=false, unite=''){
 }
 
 // Données brutes pour le curseur (partagées entre graphiques)
-let _cursorLabelsRaw = [];  return chart;
-}
+let _cursorLabelsRaw = [];
 
 function dessinerDetailCharts(labels,labelsRaw,poids,temp,hygro){
   _cursorLabelsRaw = labelsRaw;
