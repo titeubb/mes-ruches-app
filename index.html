@@ -593,12 +593,7 @@ async function chargerHistorique(id,jours){
     document.getElementById('d-var').textContent=(delta>=0?'+':'')+delta.toFixed(2)+' kg';
     document.getElementById('d-var').style.color=delta>=0?'var(--vert)':'var(--rouge)';
   }
-  if(chartPoids) chartPoids.destroy();
-  if(chartTemp)  chartTemp.destroy();
-  if(chartHygro) chartHygro.destroy();
-  chartPoids=makeChart('d-poids',labels,poids,'#E0A94A',8);
-  chartTemp =makeChart('d-temp', labels,temp, '#D08469',4);
-  chartHygro=makeChart('d-hygro',labels,hygro,'#7BA3C9',4);
+  dessinerDetailCharts(labels,labelsRaw,poids,temp,hygro);
 }
 
 // ── GRAPHIQUES ───────────────────────────────────────────────────────
@@ -611,15 +606,25 @@ function makeChart(id,labels,data,color,maxTicks, isPoids=false){
   const crosshairPlugin = {
     id:'crosshair',
     afterDraw(chart){
-      if(chart._cursorX==null) return;
+      if(chart._cursorX==null || chart._cursorY==null) return;
       const {ctx:c,chartArea:{top,bottom}}=chart;
       c.save();
-      c.strokeStyle='rgba(224,169,74,0.5)';
+      // Ligne verticale
+      c.strokeStyle='rgba(224,169,74,0.4)';
       c.lineWidth=1;
       c.setLineDash([4,4]);
       c.beginPath();
       c.moveTo(chart._cursorX,top);
       c.lineTo(chart._cursorX,bottom);
+      c.stroke();
+      // Point circulaire
+      c.setLineDash([]);
+      c.beginPath();
+      c.arc(chart._cursorX, chart._cursorY, 6, 0, Math.PI*2);
+      c.fillStyle='#E0A94A';
+      c.fill();
+      c.strokeStyle='#1B211C';
+      c.lineWidth=2;
       c.stroke();
       c.restore();
     }
