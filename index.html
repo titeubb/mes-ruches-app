@@ -541,35 +541,44 @@ function makeDetailChart(id,labels,data,color,maxTicks,unite){
   });
 
   function onMove(e){
+    e.preventDefault();
     const rect=canvas.getBoundingClientRect();
     const cx=e.touches?e.touches[0].clientX:e.clientX;
-    const cy=e.touches?e.touches[0].clientY:e.clientY;
-    const x=cx-rect.left;const y=cy-rect.top;
-    const pts=chart.getElementsAtEventForMode(
-      {native:{clientX:cx,clientY:cy},offsetX:x,offsetY:y},
-      'index',{intersect:false},false);
-    if(!pts.length) return;
-    const idx=pts[0].index;
-    const val=data[idx];
+    const x=cx-rect.left;
+
+    // Trouver le point le plus proche par position X
+    const meta=chart.getDatasetMeta(0);
+    if(!meta||!meta.data||!meta.data.length) return;
+    let closest=0;let minDist=Infinity;
+    meta.data.forEach((pt,i)=>{
+      const dist=Math.abs(pt.x-x);
+      if(dist<minDist){minDist=dist;closest=i;}
+    });
+
+    const val=data[closest];
     if(val==null||isNaN(val)) return;
-    chart._cx=pts[0].element.x;
-    chart._cy=pts[0].element.y;
+    chart._cx=meta.data[closest].x;
+    chart._cy=meta.data[closest].y;
     chart.draw();
+
     // Date et heure
-    const iso=_rawDates[idx]||'';
+    const iso=_rawDates[closest]||'';
     const d=new Date(iso);
-    const dateStr=isNaN(d.getTime())?iso:d.toLocaleDateString('fr',{day:'2-digit',month:'short',year:'numeric'});
-    const heureStr=isNaN(d.getTime())?'':d.toLocaleTimeString('fr',{hour:'2-digit',minute:'2-digit'});
+    const dateStr=isNaN(d.getTime())?iso
+      :d.toLocaleDateString('fr',{day:'2-digit',month:'short',year:'numeric'});
+    const heureStr=isNaN(d.getTime())?''
+      :d.toLocaleTimeString('fr',{hour:'2-digit',minute:'2-digit'});
     bubble.querySelector('.b-date').innerHTML=
       `${dateStr} <span style="color:${color}">${heureStr}</span>`;
     bubble.querySelector('.b-val').textContent=
       parseFloat(val).toFixed(unite==='kg'?2:1)+' '+unite;
+
     // Position bulle
     const bW=150;
     let bL=x+10;
     if(bL+bW>container.offsetWidth) bL=x-bW-10;
     bubble.style.left=Math.max(0,bL)+'px';
-    bubble.style.top=Math.max(0,y-50)+'px';
+    bubble.style.top='4px';
     bubble.style.display='block';
   }
   function onLeave(){
