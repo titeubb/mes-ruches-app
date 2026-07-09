@@ -651,6 +651,7 @@ async function chargerRuches(){
       if(!ruchesData[id]) ruchesData[id]={nom:RUCHES_META[id]?.nom||id,dernierReleve:null,historique:[]};
     }
     await chargerVariationsHebdo();
+    chargerBatteries(); // async, met à jour l'affichage quand disponible
     afficherRuches();
   }catch(e){
     document.getElementById('ruches-liste').innerHTML=
