@@ -10,11 +10,14 @@
 <link rel="manifest" href="/manifest.json">
 <title>Mes Ruches</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.6.0/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{
   --fond:#1B211C;--carte:#252C25;--carte2:#2C352C;--bord:#333D33;
   --texte:#F3E9D2;--gris:#7E8A7E;--ambre:#E0A94A;--ambre-f:#B9852E;
-  --vert:#8FB37A;--rouge:#D08469;--bleu:#7BA3C9;
+  --vert:#8FB37A;--rouge:#D08469;--bleu:#7BA3C9;--violet:#9B7FC9;
   --safe-top:env(safe-area-inset-top,0px);--safe-bot:env(safe-area-inset-bottom,0px);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
@@ -22,77 +25,113 @@ html,body{margin:0;padding:0;background:var(--fond);color:var(--texte);
   font-family:'Avenir Next','SF Pro Text','Segoe UI',sans-serif;
   -webkit-font-smoothing:antialiased;overscroll-behavior:none;height:100%;}
 #app{display:flex;flex-direction:column;height:100vh;}
-.topbar{padding:calc(14px + var(--safe-top)) 18px 14px;border-bottom:1px solid var(--bord);
+.topbar{padding:calc(12px + var(--safe-top)) 18px 12px;border-bottom:1px solid var(--bord);
   display:flex;justify-content:space-between;align-items:flex-end;flex-shrink:0;}
-.topbar h1{font-size:20px;margin:0;font-weight:700;letter-spacing:-.3px;}
-.topbar .sub{font-size:11.5px;color:var(--gris);margin-top:3px;}
-.total-val{font-size:19px;font-weight:700;color:var(--ambre);}
+.topbar h1{font-size:19px;margin:0;font-weight:700;letter-spacing:-.3px;}
+.topbar .sub{font-size:11px;color:var(--gris);margin-top:2px;}
+.total-val{font-size:18px;font-weight:700;color:var(--ambre);}
 .total-lbl{font-size:10px;color:var(--gris);text-transform:uppercase;letter-spacing:.08em;text-align:right;}
 .scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
-.tabbar{display:flex;padding:8px 4px calc(8px + var(--safe-bot));
-  background:rgba(27,33,28,.96);backdrop-filter:blur(16px);
+.tabbar{display:flex;padding:6px 0 calc(6px + var(--safe-bot));
+  background:rgba(27,33,28,.97);backdrop-filter:blur(16px);
   border-top:1px solid var(--bord);flex-shrink:0;}
 .tabbar button{flex:1;background:none;border:none;display:flex;flex-direction:column;
-  align-items:center;gap:3px;font-size:10px;color:var(--gris);padding:4px 2px;}
+  align-items:center;gap:2px;font-size:9px;color:var(--gris);padding:3px 1px;}
 .tabbar button.active{color:var(--ambre);font-weight:700;}
-.tabbar .ico{font-size:19px;line-height:1;}
+.tabbar .ico{font-size:17px;line-height:1;}
 .vue{display:none;}.vue.active{display:block;}
+.sec-title{padding:16px 16px 6px;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--gris);}
+/* CARDS */
 .card{background:var(--carte);border:1px solid var(--bord);border-radius:14px;
-  padding:16px;margin:12px 14px 0;overflow:hidden;}
+  padding:15px;margin:10px 14px 0;overflow:hidden;}
 .card-warn{background:#231F18;border-color:#4A3A1E;}
-.tag-warn{display:inline-block;font-size:10px;text-transform:uppercase;letter-spacing:.06em;
-  color:#D8B774;background:#3A2E15;padding:2px 8px;border-radius:5px;margin-top:5px;}
-.ruche-top{display:flex;justify-content:space-between;align-items:flex-start;}
-.poids-val{font-size:22px;font-weight:700;color:var(--ambre);}
-.delta{font-size:12px;font-weight:600;margin-top:2px;}
-.delta.pos{color:var(--vert);}.delta.neg{color:var(--rouge);}.delta.flat{color:var(--gris);}
-.mini-chart{height:54px;margin-top:10px;max-height:54px;display:block;}
-.ruche-meta{display:flex;gap:14px;margin-top:10px;font-size:12px;color:var(--gris);}
-.ruche-meta b{color:var(--texte);}
-.banner-actu{margin:14px 14px 0;padding:11px 13px;background:#1E2B1F;border:1px solid #2E4A30;
-  border-radius:10px;font-size:12px;color:#8FB37A;line-height:1.45;}
-.spinner{text-align:center;padding:40px;color:var(--gris);font-size:13px;}
+.card-ok{border-color:#2E4A30;}
+.tag{display:inline-block;font-size:10px;text-transform:uppercase;letter-spacing:.06em;
+  padding:2px 8px;border-radius:5px;margin-top:4px;}
+.tag-warn{color:#D8B774;background:#3A2E15;}
+.tag-ok{color:#8FB37A;background:#1E3020;}
+.tag-blue{color:#7BA3C9;background:#1A2535;}
+.tag-violet{color:#9B7FC9;background:#251A35;}
+/* SANTÉ */
+.health-bar{height:6px;border-radius:3px;background:var(--bord);margin-top:8px;overflow:hidden;}
+.health-fill{height:100%;border-radius:3px;transition:width .5s;}
+/* ALERTES */
+.alert-item{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;
+  border-bottom:1px solid var(--bord);}
+.alert-item:last-child{border-bottom:none;}
+.alert-ico{font-size:18px;flex-shrink:0;margin-top:1px;}
+.alert-txt{font-size:13px;font-weight:600;}
+.alert-sub{font-size:11px;color:var(--gris);margin-top:2px;}
 /* DÉTAIL */
 #vue-detail{display:none;position:fixed;inset:0;background:var(--fond);z-index:100;
   overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:40px;}
 #vue-detail.open{display:block;}
-.detail-top{padding:calc(14px + var(--safe-top)) 16px 14px;border-bottom:1px solid var(--bord);
-  display:flex;align-items:center;gap:12px;}
+.detail-top{padding:calc(12px + var(--safe-top)) 14px 12px;border-bottom:1px solid var(--bord);
+  display:flex;align-items:center;gap:10px;}
 .btn-back{color:var(--ambre);font-size:22px;background:none;border:none;padding:0;line-height:1;}
-.detail-hero{padding:18px 16px 4px;display:flex;justify-content:space-between;align-items:flex-end;}
-.hero-poids{font-size:34px;font-weight:700;color:var(--ambre);line-height:1;}
-.hero-delta{font-size:13px;font-weight:600;margin-top:6px;}
+.detail-hero{padding:16px 14px 4px;display:flex;justify-content:space-between;align-items:flex-end;}
+.hero-poids{font-size:32px;font-weight:700;color:var(--ambre);line-height:1;}
+.hero-delta{font-size:13px;font-weight:600;margin-top:5px;}
 .hero-meta{text-align:right;font-size:11px;color:var(--gris);line-height:1.7;}
-.period-tabs{display:flex;gap:6px;padding:14px 14px 2px;}
-.period-tab{flex:1;text-align:center;padding:8px 2px;border-radius:9px;font-size:11px;
+.period-tabs{display:flex;gap:5px;padding:12px 14px 2px;}
+.period-tab{flex:1;text-align:center;padding:7px 0;border-radius:9px;font-size:11px;
   font-weight:600;color:var(--gris);background:var(--carte);border:1px solid var(--bord);}
 .period-tab.active{color:#1B211C;background:var(--ambre);border-color:var(--ambre);}
-.stat-row{display:flex;gap:10px;margin:10px 14px 0;}
-.stat-card{flex:1;background:var(--carte);border:1px solid var(--bord);border-radius:12px;padding:12px;}
-.stat-card .lbl{font-size:10.5px;color:var(--gris);text-transform:uppercase;letter-spacing:.05em;}
-.stat-card .val{font-size:17px;font-weight:700;margin-top:3px;}
-.chart-card{background:var(--carte);margin:12px 14px 0;border-radius:14px;padding:14px;
+.stat-row{display:flex;gap:8px;margin:10px 14px 0;}
+.stat-card{flex:1;background:var(--carte);border:1px solid var(--bord);border-radius:12px;padding:10px 12px;}
+.stat-card .lbl{font-size:10px;color:var(--gris);text-transform:uppercase;letter-spacing:.05em;}
+.stat-card .val{font-size:16px;font-weight:700;margin-top:2px;}
+.chart-card{background:var(--carte);margin:10px 14px 0;border-radius:14px;padding:13px;
   border:1px solid var(--bord);position:relative;}
-.chart-card h3{font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--gris);margin:0 0 10px;}
-.chart-box{height:150px;position:relative;}
-.chart-box.sm{height:90px;position:relative;}
-/* VISITES */
-.visite-item{background:var(--carte);border:1px solid var(--bord);border-radius:12px;
-  padding:14px 16px;margin:10px 14px 0;display:flex;gap:14px;align-items:flex-start;}
-.visite-date{font-size:11px;color:var(--gris);min-width:52px;text-align:center;line-height:1.4;}
-.visite-date .jour{font-size:20px;font-weight:700;color:var(--ambre);display:block;}
-.visite-body h3{font-size:14px;font-weight:700;margin:0 0 3px;}
-.visite-body p{font-size:12px;color:var(--gris);margin:0;line-height:1.4;}
-.visite-tag{display:inline-block;font-size:10px;background:var(--bord);color:var(--gris);
-  padding:2px 7px;border-radius:5px;margin-top:5px;}
-.fab{position:fixed;bottom:calc(80px + var(--safe-bot));right:18px;width:52px;height:52px;
-  border-radius:26px;background:var(--ambre);color:#1B211C;font-size:26px;border:none;
-  display:none;align-items:center;justify-content:center;
-  box-shadow:0 4px 14px rgba(224,169,74,.4);z-index:50;}
-/* RÉGLAGES */
-.reglage-section{padding:18px 16px 4px;font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--gris);}
-.rgl-group{margin:0 14px 12px;}
-.rgl-row{background:var(--carte);border:1px solid var(--bord);padding:14px 15px;
+.chart-card h3{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--gris);margin:0 0 8px;}
+.chart-box{height:140px;position:relative;}
+.chart-box.sm{height:85px;position:relative;}
+/* RUCHE MINI */
+.ruche-top{display:flex;justify-content:space-between;align-items:flex-start;}
+.poids-val{font-size:21px;font-weight:700;color:var(--ambre);}
+.delta{font-size:12px;font-weight:600;margin-top:2px;}
+.delta.pos{color:var(--vert);}.delta.neg{color:var(--rouge);}.delta.flat{color:var(--gris);}
+.mini-chart{height:48px;margin-top:8px;max-height:48px;display:block;}
+.ruche-meta{display:flex;gap:12px;margin-top:8px;font-size:11.5px;color:var(--gris);}
+.ruche-meta b{color:var(--texte);}
+.spinner{text-align:center;padding:40px;color:var(--gris);font-size:13px;}
+.banner{margin:12px 14px 0;padding:11px 13px;border-radius:10px;font-size:12px;line-height:1.45;}
+.banner-ok{background:#1E2B1F;border:1px solid #2E4A30;color:#8FB37A;}
+.banner-warn{background:#2E1E18;border:1px solid #4A2E20;color:#D08469;}
+/* MÉTÉO */
+.meteo-current{margin:12px 14px 0;background:var(--carte);border:1px solid var(--bord);
+  border-radius:16px;padding:20px;text-align:center;}
+.meteo-temp{font-size:52px;font-weight:300;color:var(--ambre);line-height:1;}
+.meteo-desc{font-size:14px;color:var(--gris);margin-top:4px;}
+.meteo-details{display:flex;justify-content:center;gap:20px;margin-top:14px;font-size:12px;color:var(--gris);}
+.meteo-details b{color:var(--texte);}
+.forecast-row{display:flex;gap:8px;padding:0 14px;overflow-x:auto;margin-top:10px;padding-bottom:4px;}
+.forecast-day{flex-shrink:0;background:var(--carte);border:1px solid var(--bord);border-radius:12px;
+  padding:10px 12px;text-align:center;min-width:72px;}
+.forecast-day .fd-day{font-size:11px;color:var(--gris);text-transform:capitalize;}
+.forecast-day .fd-ico{font-size:22px;margin:4px 0;}
+.forecast-day .fd-max{font-size:14px;font-weight:700;color:var(--texte);}
+.forecast-day .fd-min{font-size:11px;color:var(--gris);}
+.conseil-abeille{margin:12px 14px 0;padding:12px 14px;background:var(--carte2);border:1px solid var(--bord);
+  border-radius:12px;font-size:12.5px;line-height:1.5;}
+/* IA */
+.ia-section{margin:10px 14px 0;background:var(--carte);border:1px solid var(--bord);border-radius:14px;padding:14px;}
+.ia-section h3{font-size:13px;font-weight:700;margin:0 0 10px;display:flex;align-items:center;gap:6px;}
+.ia-result{font-size:13px;line-height:1.6;color:var(--texte);margin-top:10px;white-space:pre-wrap;}
+.ia-loading{text-align:center;padding:20px;color:var(--gris);font-size:13px;}
+.btn-ia{width:100%;padding:11px;border-radius:11px;font-size:13px;font-weight:700;border:none;
+  background:var(--violet);color:white;margin-top:8px;}
+.btn-ia:disabled{opacity:.5;}
+.photo-preview{width:100%;max-height:200px;object-fit:cover;border-radius:10px;margin-top:8px;display:none;}
+/* STATS */
+.stats-grid{display:flex;gap:8px;margin:10px 14px 0;flex-wrap:wrap;}
+.stats-big{flex:1;min-width:100px;background:var(--carte);border:1px solid var(--bord);
+  border-radius:12px;padding:14px;}
+.stats-big .sb-val{font-size:24px;font-weight:700;color:var(--ambre);}
+.stats-big .sb-lbl{font-size:11px;color:var(--gris);margin-top:3px;}
+/* FORMULAIRES */
+.rgl-group{margin:0 14px 10px;}
+.rgl-row{background:var(--carte);border:1px solid var(--bord);padding:13px 15px;
   display:flex;justify-content:space-between;align-items:center;border-bottom:none;}
 .rgl-row:first-child{border-radius:12px 12px 0 0;}
 .rgl-row:last-child{border-radius:0 0 12px 12px;border-bottom:1px solid var(--bord);}
@@ -100,64 +139,82 @@ html,body{margin:0;padding:0;background:var(--fond);color:var(--texte);
 .rgl-lbl{font-size:14px;}.rgl-val{font-size:13px;color:var(--gris);}
 .seuil-input{background:var(--fond);border:1px solid var(--bord);color:var(--ambre);
   border-radius:7px;padding:5px 10px;font-size:14px;font-weight:700;width:72px;text-align:center;}
-.notif-btn{padding:8px 14px;border-radius:9px;font-size:13px;font-weight:700;border:none;
+.notif-btn{padding:7px 13px;border-radius:9px;font-size:12px;font-weight:700;border:none;
   background:var(--ambre);color:#1B211C;}
 .notif-btn.off{background:var(--bord);color:var(--gris);}
-.notif-status{font-size:11px;color:var(--gris);margin:-6px 14px 12px;}
+.notif-status{font-size:11px;color:var(--gris);margin:-4px 14px 10px;}
+.fab{position:fixed;bottom:calc(76px + var(--safe-bot));right:16px;width:50px;height:50px;
+  border-radius:25px;background:var(--ambre);color:#1B211C;font-size:24px;border:none;
+  display:none;align-items:center;justify-content:center;
+  box-shadow:0 4px 14px rgba(224,169,74,.4);z-index:50;}
 /* MODAL */
-.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:flex-end;}
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:200;align-items:flex-end;}
 .modal-bg.open{display:flex;}
 .modal{width:100%;background:var(--carte2);border-radius:20px 20px 0 0;
-  padding:20px 18px calc(20px + var(--safe-bot));border-top:1px solid var(--bord);}
-.modal h2{font-size:16px;font-weight:700;margin:0 0 16px;}
-.field{margin-bottom:14px;}
-.field label{display:block;font-size:12px;color:var(--gris);margin-bottom:5px;}
+  padding:18px 16px calc(18px + var(--safe-bot));border-top:1px solid var(--bord);
+  max-height:90vh;overflow-y:auto;}
+.modal h2{font-size:16px;font-weight:700;margin:0 0 14px;}
+.field{margin-bottom:12px;}
+.field label{display:block;font-size:11.5px;color:var(--gris);margin-bottom:4px;}
 .field input,.field select,.field textarea{width:100%;background:var(--fond);border:1px solid var(--bord);
-  color:var(--texte);border-radius:9px;padding:10px 12px;font-size:14px;font-family:inherit;}
-.field textarea{height:80px;resize:none;}
-.btn-row{display:flex;gap:10px;margin-top:6px;}
-.btn{flex:1;padding:13px;border-radius:11px;font-size:14px;font-weight:700;border:none;}
+  color:var(--texte);border-radius:9px;padding:9px 12px;font-size:14px;font-family:inherit;}
+.field textarea{height:75px;resize:none;}
+.btn-row{display:flex;gap:10px;margin-top:8px;}
+.btn{flex:1;padding:12px;border-radius:11px;font-size:14px;font-weight:700;border:none;}
 .btn-primary{background:var(--ambre);color:#1B211C;}
 .btn-ghost{background:var(--bord);color:var(--texte);}
-/* CARTE */
-#carte-frame{width:calc(100% - 28px);height:260px;border-radius:14px;
-  border:1px solid var(--bord);margin:12px 14px 0;overflow:hidden;}
-.rucher-pin{background:var(--carte);border:1px solid var(--bord);border-radius:12px;
-  padding:13px 15px;margin:10px 14px 0;display:flex;gap:12px;align-items:center;}
-.pin-ico{font-size:24px;}.pin-info{flex:1;}
-.pin-info h3{font-size:14px;font-weight:700;margin:0 0 2px;}
-.pin-info p{font-size:11.5px;color:var(--gris);margin:0;}
-.pin-poids{font-size:16px;font-weight:700;color:var(--ambre);}
-/* SANITAIRE */
-.recolte-item{background:var(--carte);border:1px solid var(--bord);border-radius:12px;
-  padding:14px 16px;margin:0 14px 8px;}
-.recolte-item .titre{font-weight:700;font-size:14px;}
-.recolte-item .detail{font-size:12px;color:var(--gris);margin-top:2px;}
-.recolte-total{text-align:center;padding:10px;font-size:13px;color:var(--ambre);font-weight:700;}
+.btn-mic{background:var(--rouge);color:white;border:none;border-radius:9px;padding:9px 14px;
+  font-size:13px;font-weight:700;margin-left:8px;}
+.btn-mic.recording{background:#8B2020;animation:pulse 1s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.6;}}
+/* PHOTOS */
+.photos-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:10px;}
+.photo-thumb{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;border:1px solid var(--bord);}
+.photo-add{width:100%;aspect-ratio:1;border-radius:8px;border:2px dashed var(--bord);
+  display:flex;align-items:center;justify-content:center;font-size:24px;color:var(--gris);
+  background:none;}
+/* ITEMS LISTES */
+.list-item{background:var(--carte);border:1px solid var(--bord);border-radius:12px;
+  padding:13px 15px;margin:8px 14px 0;}
+.list-item h3{font-size:14px;font-weight:700;margin:0 0 2px;}
+.list-item p{font-size:12px;color:var(--gris);margin:0;line-height:1.4;}
+.visite-item{display:flex;gap:12px;align-items:flex-start;}
+.visite-date{font-size:11px;color:var(--gris);min-width:48px;text-align:center;line-height:1.4;}
+.visite-date .jour{font-size:19px;font-weight:700;color:var(--ambre);display:block;}
+/* GESTION RUCHE */
+.ruche-sheet{background:var(--carte);border:1px solid var(--bord);border-radius:14px;
+  padding:14px;margin:10px 14px 0;}
+.ruche-sheet h3{font-size:14px;font-weight:700;margin:0 0 10px;display:flex;justify-content:space-between;}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.info-cell{background:var(--fond);border-radius:8px;padding:8px 10px;}
+.info-cell .lbl{font-size:10px;color:var(--gris);text-transform:uppercase;letter-spacing:.05em;}
+.info-cell .val{font-size:13px;font-weight:600;margin-top:2px;}
+.carte-frame{width:calc(100% - 28px);height:240px;border-radius:14px;
+  border:1px solid var(--bord);margin:10px 14px 0;overflow:hidden;}
 </style>
 </head>
 <body>
 
-<!-- DÉTAIL RUCHE -->
+<!-- VUE DÉTAIL RUCHE (overlay) -->
 <div id="vue-detail">
   <div class="detail-top">
-    <button class="btn-back" id="btn-back">←</button>
+    <button class="btn-back" id="btn-back">&#8592;</button>
     <div>
       <div id="detail-nom" style="font-size:17px;font-weight:700;"></div>
-      <div id="detail-maj" style="font-size:11px;color:var(--gris);margin-top:2px;"></div>
+      <div id="detail-maj" style="font-size:11px;color:var(--gris);margin-top:1px;"></div>
     </div>
   </div>
   <div class="detail-hero">
     <div>
-      <div class="hero-poids" id="detail-poids">—</div>
-      <div class="hero-delta delta" id="detail-delta">—</div>
+      <div class="hero-poids" id="detail-poids">&#8212;</div>
+      <div class="hero-delta delta" id="detail-delta">&#8212;</div>
     </div>
-    <div class="hero-meta" id="detail-meta">—</div>
+    <div class="hero-meta" id="detail-meta">&#8212;</div>
   </div>
   <div class="stat-row">
-    <div class="stat-card"><div class="lbl">Min</div><div class="val" id="d-min">—</div></div>
-    <div class="stat-card"><div class="lbl">Max</div><div class="val" id="d-max">—</div></div>
-    <div class="stat-card"><div class="lbl">Variation</div><div class="val" id="d-var">—</div></div>
+    <div class="stat-card"><div class="lbl">Min</div><div class="val" id="d-min">&#8212;</div></div>
+    <div class="stat-card"><div class="lbl">Max</div><div class="val" id="d-max">&#8212;</div></div>
+    <div class="stat-card"><div class="lbl">Variation</div><div class="val" id="d-var">&#8212;</div></div>
   </div>
   <div class="period-tabs">
     <div class="period-tab active" data-p="7">7 j</div>
@@ -165,85 +222,154 @@ html,body{margin:0;padding:0;background:var(--fond);color:var(--texte);
     <div class="period-tab" data-p="365">1 an</div>
     <div class="period-tab" data-p="0">Tout</div>
   </div>
-  <div class="chart-card" style="margin-top:12px;">
-    <h3>⚖️ Poids (kg)</h3>
+  <div class="chart-card" style="margin-top:10px;">
+    <h3>&#9878;&#65039; Poids (kg)</h3>
     <div class="chart-box"><canvas id="d-poids"></canvas></div>
   </div>
-  <div class="chart-card" style="margin-top:10px;">
-    <h3>🌡️ Température (°C)</h3>
+  <div class="chart-card" style="margin-top:8px;">
+    <h3>&#127777;&#65039; Temp&#233;rature (&#176;C)</h3>
     <div class="chart-box sm"><canvas id="d-temp"></canvas></div>
   </div>
-  <div class="chart-card" style="margin-top:10px;">
-    <h3>💧 Hygrométrie (%)</h3>
+  <div class="chart-card" style="margin-top:8px;margin-bottom:30px;">
+    <h3>&#128167; Hygrom&#233;trie (%)</h3>
     <div class="chart-box sm"><canvas id="d-hygro"></canvas></div>
   </div>
 </div>
 
-<!-- APP -->
+<!-- APP PRINCIPALE -->
 <div id="app">
   <div class="topbar">
-    <div><h1>Mes Ruches 🐝</h1><div class="sub" id="top-sub">Chargement…</div></div>
-    <div><div class="total-val" id="top-total">—</div><div class="total-lbl">poids total</div></div>
+    <div><h1>Mes Ruches &#128029;</h1><div class="sub" id="top-sub">Chargement&#8230;</div></div>
+    <div><div class="total-val" id="top-total">&#8212;</div><div class="total-lbl">poids total</div></div>
   </div>
   <div class="scroll">
+
+    <!-- *** RUCHES *** -->
     <div id="vue-ruches" class="vue active">
-      <div id="ruches-liste"><div class="spinner">🔄 Connexion…</div></div>
-      <div style="height:16px;"></div>
+      <div id="alertes-zone"></div>
+      <div id="ruches-liste"><div class="spinner">&#128260; Connexion&#8230;</div></div>
+      <div style="height:14px;"></div>
     </div>
-    <div id="vue-visites" class="vue">
-      <div id="visites-liste"></div>
+
+    <!-- *** GESTION *** -->
+    <div id="vue-gestion" class="vue">
+      <div class="sec-title">Fiches des ruches</div>
+      <div id="fiches-liste"></div>
+      <div style="height:14px;"></div>
+    </div>
+
+    <!-- *** SUIVI *** -->
+    <div id="vue-suivi" class="vue">
+      <div style="display:flex;gap:6px;padding:10px 14px 0;flex-wrap:wrap;">
+        <button class="btn btn-primary" style="flex:1;border-radius:10px;font-size:12px;padding:9px;" onclick="ouvrirSousOnglet('visites')">&#128197; Visites</button>
+        <button class="btn btn-ghost" style="flex:1;border-radius:10px;font-size:12px;padding:9px;" onclick="ouvrirSousOnglet('sanitaire')">&#129514; Sanitaire</button>
+        <button class="btn btn-ghost" style="flex:1;border-radius:10px;font-size:12px;padding:9px;" onclick="ouvrirSousOnglet('nourrissements')">&#127859; Nourrissements</button>
+      </div>
+      <div id="sous-visites">
+        <div class="sec-title">Calendrier des visites</div>
+        <div id="visites-liste"></div>
+      </div>
+      <div id="sous-sanitaire" style="display:none;">
+        <div class="sec-title">Traitement Varroa</div>
+        <div class="rgl-group" id="varroa-liste"></div>
+        <div class="sec-title">R&#233;coltes de miel</div>
+        <div id="recoltes-liste"></div>
+        <div style="text-align:center;margin:8px 14px;">
+          <button class="btn btn-primary" id="btn-add-recolte" style="border-radius:11px;">+ Ajouter une r&#233;colte</button>
+        </div>
+        <div style="text-align:center;padding:6px;font-size:13px;color:var(--ambre);font-weight:700;" id="recolte-total"></div>
+      </div>
+      <div id="sous-nourrissements" style="display:none;">
+        <div class="sec-title">Nourrissements</div>
+        <div id="nourrissements-liste"></div>
+        <div style="text-align:center;margin:8px 14px;">
+          <button class="btn btn-primary" id="btn-add-nourr" style="border-radius:11px;">+ Ajouter un nourrissement</button>
+        </div>
+      </div>
       <div style="height:80px;"></div>
     </div>
-    <div id="vue-sanitaire" class="vue">
-      <div class="reglage-section">Traitement Varroa</div>
-      <div class="rgl-group" id="varroa-liste"></div>
-      <div class="reglage-section">Récoltes de miel</div>
-      <div id="recoltes-liste"></div>
-      <div style="text-align:center;margin:8px 14px;">
-        <button class="btn btn-primary" id="btn-add-recolte" style="border-radius:11px;">+ Ajouter une récolte</button>
+
+    <!-- *** METEO *** -->
+    <div id="vue-meteo" class="vue">
+      <div id="meteo-content"><div class="spinner">&#128260; Chargement m&#233;t&#233;o&#8230;</div></div>
+      <div style="height:14px;"></div>
+    </div>
+
+    <!-- *** IA *** -->
+    <div id="vue-ia" class="vue">
+      <div class="ia-section">
+        <h3>&#129302; Analyse des courbes de poids</h3>
+        <div class="field"><label>Ruche &#224; analyser</label>
+          <select id="ia-ruche-sel">
+            <option value="7B464">Ch&#226;teau Massilan</option>
+            <option value="7B462">Lac Li Piboulos</option>
+            <option value="7B45C">La Comtesse</option>
+          </select></div>
+        <button class="btn-ia" id="btn-analyser">&#129302; Analyser avec l&#8217;IA</button>
+        <div id="ia-result-poids"></div>
       </div>
-      <div class="recolte-total" id="recolte-total"></div>
-      <div class="reglage-section">Production par ruche</div>
-      <div id="production-liste"></div>
-      <div style="height:20px;"></div>
+      <div class="ia-section" style="margin-top:10px;">
+        <h3>&#128247; Analyse photo de cadre</h3>
+        <input type="file" id="photo-input" accept="image/*" style="display:none;">
+        <button class="btn-ia" style="background:var(--bleu);" onclick="document.getElementById('photo-input').click()">
+          &#128247; Choisir une photo de cadre
+        </button>
+        <img id="photo-preview" class="photo-preview">
+        <button class="btn-ia" id="btn-analyser-photo" style="display:none;">&#129302; Analyser le cadre</button>
+        <div id="ia-result-photo"></div>
+      </div>
+      <div class="ia-section" style="margin-top:10px;margin-bottom:20px;">
+        <h3>&#128202; Pr&#233;vision des r&#233;coltes</h3>
+        <button class="btn-ia" style="background:var(--vert);color:#1B211C;" id="btn-prevision">
+          &#128202; Pr&#233;voir ma r&#233;colte
+        </button>
+        <div id="ia-result-prevision"></div>
+      </div>
     </div>
-    <div id="vue-carte" class="vue">
-      <iframe id="carte-frame" frameborder="0" allowfullscreen loading="lazy" style="display:none;"></iframe>
-      <div id="carte-ruchers"></div>
-      <div style="height:16px;"></div>
-    </div>
+
+    <!-- *** REGLAGES *** -->
     <div id="vue-reglages" class="vue">
-      <div class="reglage-section">Notifications de poids</div>
+      <div class="sec-title">Notifications de poids</div>
       <div class="rgl-group">
         <div class="rgl-row"><span class="rgl-lbl">Activer les alertes</span>
           <button class="notif-btn off" id="btn-notif">Activer</button></div>
         <div class="rgl-row"><span class="rgl-lbl">Seuil de variation</span>
           <span><input type="number" class="seuil-input" id="seuil-input" value="0.2" step="0.1" min="0.1"> kg</span></div>
       </div>
-      <div class="notif-status" id="notif-status">Les notifications alertent ton iPhone même quand l'app est fermée.</div>
-      <div class="reglage-section">Localisation des ruchers</div>
+      <div class="notif-status" id="notif-status">Les alertes arrivent m&#234;me app ferm&#233;e.</div>
+      <div class="sec-title">Localisation des ruchers</div>
       <div class="rgl-group" id="gps-liste"></div>
-      <div class="reglage-section">Serveur BeeZbee</div>
+      <div class="sec-title">Exporter mes donn&#233;es</div>
+      <div class="rgl-group">
+        <div class="rgl-row"><span class="rgl-lbl">&#128196; Export PDF</span>
+          <button class="notif-btn" onclick="exportPDF()">G&#233;n&#233;rer</button></div>
+        <div class="rgl-row"><span class="rgl-lbl">&#128202; Export Excel</span>
+          <button class="notif-btn" onclick="exportExcel()">G&#233;n&#233;rer</button></div>
+        <div class="rgl-row"><span class="rgl-lbl">&#128257; Partager mes donn&#233;es</span>
+          <button class="notif-btn" onclick="partagerDonnees()">Partager</button></div>
+      </div>
+      <div class="sec-title">Serveur BeeZbee</div>
       <div class="rgl-group">
         <div class="rgl-row" style="border-radius:12px;border-bottom:1px solid var(--bord);">
           <span class="rgl-lbl">Forcer la collecte</span>
-          <button class="notif-btn" id="btn-collecter">Actualiser</button>
-        </div>
+          <button class="notif-btn" id="btn-collecter">Actualiser</button></div>
       </div>
-      <div class="reglage-section">À propos</div>
+      <div class="sec-title">&#192; propos</div>
       <div class="rgl-group">
         <div class="rgl-row" style="border-radius:12px;border-bottom:1px solid var(--bord);">
-          <span class="rgl-lbl">Version</span><span class="rgl-val">2.1</span></div>
+          <span class="rgl-lbl">Version</span><span class="rgl-val">3.0</span></div>
       </div>
       <div style="height:20px;"></div>
     </div>
+
   </div>
   <nav class="tabbar">
-    <button class="active" data-vue="ruches"><span class="ico">🏠</span>Ruches</button>
-    <button data-vue="visites"><span class="ico">📅</span>Visites</button>
-    <button data-vue="sanitaire"><span class="ico">🩺</span>Sanitaire</button>
-    <button data-vue="carte"><span class="ico">🗺️</span>Carte</button>
-    <button data-vue="reglages"><span class="ico">⚙️</span>Réglages</button>
+    <button class="active" data-vue="ruches"><span class="ico">&#127968;</span>Ruches</button>
+    <button data-vue="gestion"><span class="ico">&#128029;</span>Gestion</button>
+    <button data-vue="suivi"><span class="ico">&#128197;</span>Suivi</button>
+    <button data-vue="meteo"><span class="ico">&#127774;</span>M&#233;t&#233;o</button>
+    <button data-vue="ia"><span class="ico">&#129302;</span>IA</button>
+    <button data-vue="reglages"><span class="ico">&#9881;&#65039;</span>R&#233;glages</button>
   </nav>
 </div>
 
@@ -253,72 +379,151 @@ html,body{margin:0;padding:0;background:var(--fond);color:var(--texte);
 <div class="modal-bg" id="modal-visite">
   <div class="modal"><h2>Nouvelle visite</h2>
     <div class="field"><label>Ruche</label><select id="v-ruche">
-      <option value="7B464">Château Massilan</option>
+      <option value="7B464">Ch&#226;teau Massilan</option>
       <option value="7B462">Lac Li Piboulos</option>
       <option value="7B45C">La Comtesse</option></select></div>
     <div class="field"><label>Date</label><input type="date" id="v-date"></div>
-    <div class="field"><label>Observations</label>
-      <textarea id="v-obs" placeholder="Reine vue, cadres de couvain…"></textarea></div>
+    <div class="field">
+      <label>Observations <button class="btn-mic" id="btn-mic">&#127908;</button></label>
+      <textarea id="v-obs" placeholder="Reine vue, cadres de couvain&#8230;"></textarea></div>
+    <div class="field"><label>Reine vue ?</label><select id="v-reine">
+      <option value="">Non observ&#233;e</option>
+      <option value="oui">Oui</option>
+      <option value="non">Non</option></select></div>
+    <div class="field"><label>&#201;tat g&#233;n&#233;ral (1-5)</label>
+      <select id="v-etat">
+        <option value="5">5 - Excellent</option>
+        <option value="4">4 - Bon</option>
+        <option value="3">3 - Moyen</option>
+        <option value="2">2 - Pr&#233;occupant</option>
+        <option value="1">1 - Critique</option>
+      </select></div>
     <div class="btn-row">
-      <button class="btn btn-ghost" id="btn-annuler-visite">Annuler</button>
+      <button class="btn btn-ghost" onclick="fermerModal('modal-visite')">Annuler</button>
       <button class="btn btn-primary" id="btn-save-visite">Enregistrer</button>
     </div></div>
 </div>
+
 <div class="modal-bg" id="modal-recolte">
-  <div class="modal"><h2>🍯 Nouvelle récolte</h2>
+  <div class="modal"><h2>&#127855; Nouvelle r&#233;colte</h2>
     <div class="field"><label>Ruche</label><select id="r-ruche">
-      <option value="7B464">Château Massilan</option>
+      <option value="7B464">Ch&#226;teau Massilan</option>
       <option value="7B462">Lac Li Piboulos</option>
       <option value="7B45C">La Comtesse</option></select></div>
     <div class="field"><label>Date</label><input type="date" id="r-date"></div>
-    <div class="field"><label>Quantité (kg)</label>
+    <div class="field"><label>Quantit&#233; (kg)</label>
       <input type="number" id="r-kg" placeholder="ex: 12.5" step="0.1" min="0"></div>
     <div class="field"><label>Notes</label>
-      <textarea id="r-notes" placeholder="Qualité, couleur…" style="height:60px;"></textarea></div>
+      <textarea id="r-notes" placeholder="Qualit&#233;, couleur, fleurs&#8230;" style="height:60px;"></textarea></div>
     <div class="btn-row">
-      <button class="btn btn-ghost" id="btn-annuler-recolte">Annuler</button>
+      <button class="btn btn-ghost" onclick="fermerModal('modal-recolte')">Annuler</button>
       <button class="btn btn-primary" id="btn-save-recolte">Enregistrer</button>
     </div></div>
 </div>
+
 <div class="modal-bg" id="modal-varroa">
-  <div class="modal"><h2>🐛 Traitement Varroa</h2>
+  <div class="modal"><h2>&#128027; Traitement Varroa</h2>
     <div class="field"><label>Ruche(s)</label><select id="vr-ruche">
       <option value="toutes">Toutes les ruches</option>
-      <option value="7B464">Château Massilan</option>
+      <option value="7B464">Ch&#226;teau Massilan</option>
       <option value="7B462">Lac Li Piboulos</option>
       <option value="7B45C">La Comtesse</option></select></div>
-    <div class="field"><label>Date</label><input type="date" id="vr-date"></div>
+    <div class="field"><label>Date de d&#233;but</label><input type="date" id="vr-date"></div>
     <div class="field"><label>Produit</label>
-      <input type="text" id="vr-produit" placeholder="Apivar, Apiguard…"></div>
+      <input type="text" id="vr-produit" placeholder="Apivar, Apiguard, ac. oxalique&#8230;"></div>
     <div class="field"><label>Notes</label>
-      <textarea id="vr-notes" placeholder="Dosage, conditions…" style="height:60px;"></textarea></div>
+      <textarea id="vr-notes" style="height:55px;" placeholder="Dosage, conditions&#8230;"></textarea></div>
     <div class="btn-row">
-      <button class="btn btn-ghost" id="btn-annuler-varroa">Annuler</button>
+      <button class="btn btn-ghost" onclick="fermerModal('modal-varroa')">Annuler</button>
       <button class="btn btn-primary" id="btn-save-varroa">Enregistrer</button>
     </div></div>
 </div>
 
+<div class="modal-bg" id="modal-nourr">
+  <div class="modal"><h2>&#127859; Nourrissement</h2>
+    <div class="field"><label>Ruche(s)</label><select id="n-ruche">
+      <option value="toutes">Toutes les ruches</option>
+      <option value="7B464">Ch&#226;teau Massilan</option>
+      <option value="7B462">Lac Li Piboulos</option>
+      <option value="7B45C">La Comtesse</option></select></div>
+    <div class="field"><label>Date</label><input type="date" id="n-date"></div>
+    <div class="field"><label>Type</label><select id="n-type">
+      <option value="sirop">Sirop sucr&#233;</option>
+      <option value="candi">Candi</option>
+      <option value="pollen">Substitut pollen</option>
+      <option value="eau">Eau</option>
+      <option value="autre">Autre</option></select></div>
+    <div class="field"><label>Quantit&#233;</label>
+      <input type="text" id="n-qte" placeholder="ex: 1 litre, 500g&#8230;"></div>
+    <div class="field"><label>Notes</label>
+      <textarea id="n-notes" style="height:55px;" placeholder="Observations&#8230;"></textarea></div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="fermerModal('modal-nourr')">Annuler</button>
+      <button class="btn btn-primary" id="btn-save-nourr">Enregistrer</button>
+    </div></div>
+</div>
+
+<div class="modal-bg" id="modal-fiche">
+  <div class="modal"><h2>&#128029; Fiche de la ruche</h2>
+    <div id="fiche-id-hidden"></div>
+    <div class="field"><label>Race des abeilles</label>
+      <select id="fiche-race">
+        <option value="">Non sp&#233;cifi&#233;e</option>
+        <option value="Buckfast">Buckfast</option>
+        <option value="Noire (Apis mellifera mellifera)">Noire</option>
+        <option value="Ligure (Apis mellifera ligustica)">Ligure</option>
+        <option value="Carniole (Apis mellifera carnica)">Carniole</option>
+        <option value="Caucasienne">Caucasienne</option>
+        <option value="Autre">Autre</option>
+      </select></div>
+    <div class="field"><label>Num&#233;ro de reine</label>
+      <input type="text" id="fiche-reine" placeholder="ex: R2024-01"></div>
+    <div class="field"><label>Ann&#233;e de naissance reine</label>
+      <input type="number" id="fiche-annee" placeholder="ex: 2023" min="2000" max="2030"></div>
+    <div class="field"><label>Origine</label>
+      <input type="text" id="fiche-origine" placeholder="&#201;levage, essaim naturel&#8230;"></div>
+    <div class="field"><label>Observations g&#233;n&#233;rales</label>
+      <textarea id="fiche-obs" placeholder="Caract&#232;re, particularit&#233;s&#8230;"></textarea></div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="fermerModal('modal-fiche')">Annuler</button>
+      <button class="btn btn-primary" id="btn-save-fiche">Enregistrer</button>
+    </div></div>
+</div>
+
 <script>
-const API = 'https://mes-ruches-server.onrender.com';
-const RUCHES_META = {
-  '7B464':{nom:'Château Massilan',emoji:'🏰'},
-  '7B462':{nom:'Lac Li Piboulos',emoji:'🌊'},
-  '7B45C':{nom:'La Comtesse',emoji:'👑'}
+const API='https://mes-ruches-server.onrender.com';
+const RUCHES_META={
+  '7B464':{nom:'Ch\u00e2teau Massilan',emoji:'\u{1F3F0}'},
+  '7B462':{nom:'Lac Li Piboulos',emoji:'\u{1F30A}'},
+  '7B45C':{nom:'La Comtesse',emoji:'\u{1F451}'}
 };
-const ORDRE = ['7B464','7B462','7B45C'];
+const ORDRE=['7B464','7B462','7B45C'];
+const WMO={0:{l:'Ciel d\u00e9gag\u00e9',e:'\u2600\uFE0F'},1:{l:'Peu nuageux',e:'\u{1F324}\uFE0F'},
+  2:{l:'Partiellement nuageux',e:'\u26C5'},3:{l:'Couvert',e:'\u2601\uFE0F'},
+  45:{l:'Brouillard',e:'\u{1F32B}\uFE0F'},51:{l:'Bruine',e:'\u{1F326}\uFE0F'},
+  61:{l:'Pluie l\u00e9g\u00e8re',e:'\u{1F327}\uFE0F'},63:{l:'Pluie',e:'\u{1F327}\uFE0F'},
+  65:{l:'Pluie forte',e:'\u{1F327}\uFE0F'},71:{l:'Neige',e:'\u{1F328}\uFE0F'},
+  80:{l:'Averses',e:'\u{1F326}\uFE0F'},81:{l:'Averses mod.',e:'\u{1F327}\uFE0F'},
+  95:{l:'Orage',e:'\u26C8\uFE0F'}};
 
-let ruchesData = {};
-let histoCache  = {};
-let detailRuche = null;
-let chartPoids, chartTemp, chartHygro;
-let _rawDates   = []; // dates ISO brutes pour le curseur
+let ruchesData={};let histoCache={};let detailRuche=null;
+let chartPoids,chartTemp,chartHygro;
+let _rawDates=[];
+let micRecog=null;
 
-let visites  = JSON.parse(localStorage.getItem('visites')  || '[]');
-let recoltes = JSON.parse(localStorage.getItem('recoltes') || '[]');
-let varroas  = JSON.parse(localStorage.getItem('varroas')  || '[]');
-let ruchers  = JSON.parse(localStorage.getItem('ruchers')  || JSON.stringify({
+let visites=JSON.parse(localStorage.getItem('visites')||'[]');
+let recoltes=JSON.parse(localStorage.getItem('recoltes')||'[]');
+let varroas=JSON.parse(localStorage.getItem('varroas')||'[]');
+let nourrissements=JSON.parse(localStorage.getItem('nourrissements')||'[]');
+let fiches=JSON.parse(localStorage.getItem('fiches')||'{}');
+let photos=JSON.parse(localStorage.getItem('photos')||'{}');
+let ruchers=JSON.parse(localStorage.getItem('ruchers')||JSON.stringify({
   '7B464':{lat:'',lng:''},'7B462':{lat:'',lng:''},'7B45C':{lat:'',lng:''}
 }));
+
+function sauver(k,v){localStorage.setItem(k,JSON.stringify(v));}
+function fermerModal(id){document.getElementById(id).classList.remove('open');}
+function ouvrirModal(id){document.getElementById(id).classList.add('open');}
 
 // ── NAVIGATION
 document.querySelectorAll('.tabbar button').forEach(btn=>{
@@ -328,12 +533,85 @@ document.querySelectorAll('.tabbar button').forEach(btn=>{
     btn.classList.add('active');
     document.querySelectorAll('.vue').forEach(v=>v.classList.remove('active'));
     document.getElementById('vue-'+vue).classList.add('active');
-    document.getElementById('fab').style.display=vue==='visites'?'flex':'none';
-    if(vue==='carte') initCarte();
+    document.getElementById('fab').style.display=vue==='suivi'?'flex':'none';
+    if(vue==='meteo') chargerMeteo();
     if(vue==='reglages'){chargerSeuil();initGpsReglages();}
-    if(vue==='sanitaire') afficherSanitaire();
+    if(vue==='gestion') afficherFiches();
+    if(vue==='suivi') afficherSuivi();
   });
 });
+
+function ouvrirSousOnglet(id){
+  ['visites','sanitaire','nourrissements'].forEach(s=>{
+    document.getElementById('sous-'+s).style.display=s===id?'block':'none';
+  });
+  document.querySelectorAll('#vue-suivi .btn').forEach((b,i)=>{
+    const names=['visites','sanitaire','nourrissements'];
+    b.className=b.className.replace('btn-primary','btn-ghost').replace('btn-ghost','btn-ghost');
+    if(names[i]===id) b.className=b.className.replace('btn-ghost','btn-primary');
+  });
+  if(id==='sanitaire') afficherSanitaire();
+  if(id==='nourrissements') afficherNourrissements();
+  if(id==='visites') afficherVisites();
+}
+
+// ── SANTÉ
+function calcSante(id){
+  const d=ruchesData[id];if(!d?.dernierReleve) return null;
+  const r=d.dernierReleve;const v=d.variationSemaine??0;
+  let s=70;
+  if(r.poids<5) return 8;
+  if(r.poids<10) s-=25;
+  if(r.temperature>45||r.temperature<0) s-=30;
+  else if(r.temperature>40) s-=15;
+  if(v>1) s+=20;else if(v>0) s+=8;
+  else if(v<-3) s-=25;else if(v<-1) s-=12;
+  if(r.hygrometrie<30||r.hygrometrie>95) s-=10;
+  return Math.max(5,Math.min(100,Math.round(s)));
+}
+function couleurSante(s){
+  if(s>=70) return '#8FB37A';
+  if(s>=40) return '#E0A94A';
+  return '#D08469';
+}
+function labelSante(s){
+  if(s>=80) return 'Excellente';if(s>=60) return 'Bonne';
+  if(s>=40) return 'Moyenne';if(s>=20) return 'Pr\u00e9occupante';return 'Critique';
+}
+
+// ── ALERTES
+function detecterAlertes(id){
+  const d=ruchesData[id];const r=d?.dernierReleve;
+  if(!r) return [];const alerts=[];
+  const v=d.variationSemaine??0;
+  // Essaimage probable
+  if(v<-2.5){
+    alerts.push({ico:'\u{1F41D}',txt:'Essaimage probable',sub:'Perte de '+Math.abs(v).toFixed(1)+' kg cette semaine',type:'warn'});
+  }
+  // Miell\u00e9e
+  if(v>3.5){
+    alerts.push({ico:'\u{1F36F}',txt:'Miel\u00e9e d\u00e9tect\u00e9e !',sub:'+'+v.toFixed(1)+' kg cette semaine \u2014 pens\u00e9 aux hausses',type:'ok'});
+  }
+  // Poids critique
+  if(r.poids<5&&r.poids>0){
+    alerts.push({ico:'\u26A0\uFE0F',txt:'Poids critique',sub:r.poids.toFixed(1)+' kg \u2014 v\u00e9rification urgente',type:'warn'});
+  }
+  // Temp
+  if(r.temperature>45){
+    alerts.push({ico:'\u{1F321}\uFE0F',txt:'Temp\u00e9rature anormale',sub:r.temperature+'\u00b0C \u2014 essaimage ou capteur d\u00e9faillant',type:'warn'});
+  }
+  // Varroa
+  const lv=[...varroas].filter(v=>v.ruche===id||v.ruche==='toutes').sort((a,b)=>b.date.localeCompare(a.date))[0];
+  if(!lv||(Date.now()-new Date(lv.date).getTime())>300*86400000){
+    alerts.push({ico:'\u{1F42C}',txt:'Traitement varroa \u00e0 planifier',sub:'Dernier traitement : '+(lv?lv.date:'jamais'),type:'blue'});
+  }
+  // Visite
+  const lvis=[...visites].filter(v=>v.ruche===id).sort((a,b)=>b.date.localeCompare(a.date))[0];
+  if(!lvis||(Date.now()-new Date(lvis.date).getTime())>30*86400000){
+    alerts.push({ico:'\u{1F4CB}',txt:'Visite recommand\u00e9e',sub:'Derni\u00e8re visite : '+(lvis?lvis.date:'jamais'),type:'blue'});
+  }
+  return alerts;
+}
 
 // ── CHARGEMENT RUCHES
 async function chargerRuches(){
@@ -342,22 +620,22 @@ async function chargerRuches(){
     ruchesData={};
     if(Array.isArray(raw)){
       for(const row of raw){
-        const id=row.ruche_id;
-        ruchesData[id]={nom:row.ruche_nom,
+        ruchesData[row.ruche_id]={nom:row.ruche_nom,
           dernierReleve:{date:row.date_mesure,poids:parseFloat(row.poids),
             temperature:parseFloat(row.temperature),hygrometrie:parseFloat(row.hygrometrie),
             batterie:row.batterie!=null?parseFloat(row.batterie):null},
           historique:[{date:row.date_mesure,poids:parseFloat(row.poids)}]};
       }
-    } else { ruchesData=raw; }
+    } else {ruchesData=raw;}
     for(const id of ORDRE){
       if(!ruchesData[id]) ruchesData[id]={nom:RUCHES_META[id]?.nom||id,dernierReleve:null,historique:[]};
     }
     await chargerVariationsHebdo();
+    afficherAlertes();
     afficherRuches();
   }catch(e){
     document.getElementById('ruches-liste').innerHTML=
-      `<div class="banner-actu">⚠️ Impossible de joindre le serveur.<br><small>${e.message}</small></div>`;
+      '<div class="banner banner-warn">\u26A0\uFE0F Impossible de joindre le serveur.<br><small>'+e.message+'</small></div>';
   }
 }
 
@@ -374,64 +652,94 @@ async function chargerVariationsHebdo(){
   }
 }
 
+function afficherAlertes(){
+  let html='';
+  const toutes=ORDRE.flatMap(id=>detecterAlertes(id).map(a=>({...a,ruche:RUCHES_META[id].nom})));
+  if(!toutes.length) return;
+  html='<div class="card" style="margin-top:12px;padding:0;overflow:hidden;">';
+  html+='<div style="padding:10px 14px 6px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--gris);">\u{1F514} Alertes</div>';
+  html+=toutes.map(a=>`<div class="alert-item">
+    <div class="alert-ico">${a.ico}</div>
+    <div><div class="alert-txt">${a.txt} <span style="font-size:11px;color:var(--gris);">\u2014 ${a.ruche}</span></div>
+    <div class="alert-sub">${a.sub}</div></div></div>`).join('');
+  html+='</div>';
+  document.getElementById('alertes-zone').innerHTML=html;
+}
+
 function afficherRuches(){
   const total=ORDRE.reduce((s,id)=>s+(ruchesData[id]?.dernierReleve?.poids||0),0);
-  document.getElementById('top-total').textContent=total>0?total.toFixed(1)+' kg':'—';
+  document.getElementById('top-total').textContent=total>0?total.toFixed(1)+' kg':'\u2014';
   const dates=ORDRE.map(id=>ruchesData[id]?.dernierReleve?.date).filter(Boolean);
   document.getElementById('top-sub').textContent=dates.length
-    ?'3 ruchers · '+formatDate(dates.sort().reverse()[0]):'3 ruchers';
+    ?'3 ruchers \u00b7 '+formatDate(dates.sort().reverse()[0]):'3 ruchers';
 
-  let html='';
+  let html='<div class="sec-title">Tes ruchers</div>';
   for(const id of ORDRE){
-    const data=ruchesData[id];const meta=RUCHES_META[id];const r=data?.dernierReleve;
-    if(!r){html+=`<div class="card" style="opacity:.5;"><div style="display:flex;align-items:center;gap:8px;">
-      <span style="font-size:20px;">${meta.emoji}</span>
-      <div><div style="font-weight:700;">${meta.nom}</div><div class="sub">Balance hors-ligne</div></div>
-      </div></div>`;continue;}
-    const delta=data.variationSemaine??0;
-    const dCls=delta>0.05?'pos':delta<-0.05?'neg':'flat';
-    const dEmoji=delta>0.05?'▲':delta<-0.05?'▼':'—';
+    const d=ruchesData[id];const meta=RUCHES_META[id];const r=d?.dernierReleve;
+    const sante=calcSante(id);
+    if(!r){
+      html+=`<div class="card" style="opacity:.5;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:20px;">${meta.emoji}</span>
+          <div><div style="font-weight:700;">${meta.nom}</div>
+          <div class="sub">Balance hors-ligne</div></div></div></div>`;
+      continue;
+    }
+    const v=d.variationSemaine??0;
+    const dCls=v>0.05?'pos':v<-0.05?'neg':'flat';
+    const dEmoji=v>0.05?'\u25B2':v<-0.05?'\u25BC':'\u2014';
     const warn=r.poids<5||r.temperature>45;
-    const hasH=(data.historique||[]).length>1;
-    const battHtml=r.batterie!=null&&!isNaN(r.batterie)?`<span>🔋 <b>${r.batterie}%</b></span>`:'';
+    const hasH=(d.historique||[]).length>1;
+    const battHtml=r.batterie!=null&&!isNaN(r.batterie)?`<span>\u{1F50B} <b>${r.batterie}%</b></span>`:'';
+    const santeColor=sante?couleurSante(sante):'var(--gris)';
+    const santeLabel=sante?labelSante(sante):'N/A';
     html+=`<div class="card ${warn?'card-warn':''}" data-id="${id}" style="cursor:pointer;">
       <div class="ruche-top">
         <div style="display:flex;align-items:center;gap:7px;">
           <span style="font-size:20px;">${meta.emoji}</span>
-          <div><div style="font-size:15.5px;font-weight:700;">${meta.nom}</div>
-          <div class="sub">${formatDate(r.date)}</div>
-          ${warn?'<div class="tag-warn">⚠ capteur à vérifier</div>':''}</div>
+          <div><div style="font-size:15px;font-weight:700;">${meta.nom}</div>
+          <div style="font-size:11px;color:var(--gris);">${formatDate(r.date)}</div>
+          ${warn?'<span class="tag tag-warn">\u26A0 capteur \u00e0 v\u00e9rifier</span>':''}</div>
         </div>
         <div style="text-align:right;">
           <div class="poids-val">${r.poids.toFixed(1)} kg</div>
-          <div class="delta ${dCls}">${dEmoji} ${delta>=0?'+':''}${Math.abs(delta).toFixed(2)} kg/7j</div>
+          <div class="delta ${dCls}">${dEmoji} ${v>=0?'+':''}${Math.abs(v).toFixed(2)} kg/7j</div>
         </div>
       </div>
+      ${sante?`<div style="margin-top:10px;">
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;">
+          <span style="color:var(--gris);">Sant\u00e9 colonie</span>
+          <span style="color:${santeColor};font-weight:700;">${santeLabel} (${sante}/100)</span>
+        </div>
+        <div class="health-bar"><div class="health-fill" style="width:${sante}%;background:${santeColor};"></div></div>
+      </div>`:''}
       <canvas class="mini-chart" id="mini-${id}" style="${hasH?'':'display:none;'}"></canvas>
       <div class="ruche-meta">
-        <span>🌡️ <b>${r.temperature}°C</b></span>
-        <span>💧 <b>${r.hygrometrie<=100?r.hygrometrie+'%':'—'}</b></span>
+        <span>\u{1F321}\uFE0F <b>${r.temperature}\u00b0C</b></span>
+        <span>\u{1F4A7} <b>${r.hygrometrie<=100?r.hygrometrie+'%':'\u2014'}</b></span>
         ${battHtml}
       </div></div>`;
   }
-  document.getElementById('ruches-liste').innerHTML=html||'<div class="banner-actu">Aucune donnée.</div>';
+  document.getElementById('ruches-liste').innerHTML=html;
   for(const id of ORDRE){
     const el=document.getElementById('mini-'+id);if(!el)continue;
     const vals=(ruchesData[id]?.historique||[]).map(h=>h.poids);if(vals.length<2)continue;
     makeMini(el,vals,(ruchesData[id]?.dernierReleve?.poids||0)<5?'#D08469':'#E0A94A');
   }
-  document.querySelectorAll('[data-id]').forEach(c=>c.addEventListener('click',()=>ouvrirDetail(c.dataset.id)));
+  document.querySelectorAll('[data-id]').forEach(c=>{
+    c.addEventListener('click',()=>ouvrirDetail(c.dataset.id));
+  });
 }
 
-// ── DÉTAIL
+// ── D\u00c9TAIL
 async function ouvrirDetail(id){
   detailRuche=id;
   const meta=RUCHES_META[id];const r=ruchesData[id]?.dernierReleve;
   document.getElementById('detail-nom').textContent=meta.emoji+' '+meta.nom;
-  document.getElementById('detail-poids').textContent=r?r.poids.toFixed(1)+' kg':'—';
+  document.getElementById('detail-poids').textContent=r?r.poids.toFixed(1)+' kg':'\u2014';
   document.getElementById('detail-maj').textContent=r?formatDate(r.date):'';
   document.getElementById('detail-meta').innerHTML=r
-    ?`🌡️ ${r.temperature}°C<br>💧 ${r.hygrometrie<=100?r.hygrometrie+'%':'—'}${r.batterie!=null?'<br>🔋 '+r.batterie+'%':''}`:'—';
+    ?'\u{1F321}\uFE0F '+r.temperature+'\u00b0C<br>\u{1F4A7} '+(r.hygrometrie<=100?r.hygrometrie+'%':'\u2014')+(r.batterie!=null?'<br>\u{1F50B} '+r.batterie+'%':''):'';
   document.querySelectorAll('.period-tab').forEach((t,i)=>t.classList.toggle('active',i===0));
   document.getElementById('vue-detail').classList.add('open');
   await chargerHistorique(id,7);
@@ -453,138 +761,87 @@ async function chargerHistorique(id,jours){
     try{
       const url=API+'/api/ruches/'+id+'/historique'+(jours>0?'?jours='+jours:'');
       const raw=await (await fetch(url)).json();
-      histo=Array.isArray(raw)?raw.map(p=>({
-        date:p.date_mesure||p.date,poids:parseFloat(p.poids),
-        temperature:parseFloat(p.temperature),hygrometrie:parseFloat(p.hygrometrie)
-      })):(ruchesData[id]?.historique||[]);
+      histo=Array.isArray(raw)?raw.map(p=>({date:p.date_mesure||p.date,
+        poids:parseFloat(p.poids),temperature:parseFloat(p.temperature),
+        hygrometrie:parseFloat(p.hygrometrie)})):(ruchesData[id]?.historique||[]);
       histoCache[key]=histo;
     }catch{histo=ruchesData[id]?.historique||[];}
   }
   const MAX=100;let pts=histo;
   if(pts.length>MAX){const step=Math.ceil(pts.length/MAX);pts=pts.filter((_,i)=>i%step===0);}
-
   const labels=pts.map(p=>formatDateCourt(p.date));
   _rawDates=pts.map(p=>p.date);
   const poids=pts.map(p=>p.poids);
   const temp=pts.map(p=>p.temperature);
   const hygro=pts.map(p=>p.hygrometrie<=100?p.hygrometrie:null);
-
   const pv=poids.filter(v=>!isNaN(v));
   if(pv.length>=2){
-    const delta=pv[pv.length-1]-pv[0];const sign=delta>=0?'+':'';
-    document.getElementById('detail-delta').textContent=`${delta>=0?'▲':'▼'} ${sign}${delta.toFixed(2)} kg sur la période`;
+    const delta=pv[pv.length-1]-pv[0];
+    document.getElementById('detail-delta').textContent=(delta>=0?'\u25B2 +':'\u25BC ')+Math.abs(delta).toFixed(2)+' kg sur la p\u00e9riode';
     document.getElementById('detail-delta').className='hero-delta delta '+(delta>=0?'pos':'neg');
     document.getElementById('d-min').textContent=Math.min(...pv).toFixed(1)+' kg';
     document.getElementById('d-max').textContent=Math.max(...pv).toFixed(1)+' kg';
     document.getElementById('d-var').textContent=(delta>=0?'+':'')+delta.toFixed(2)+' kg';
     document.getElementById('d-var').style.color=delta>=0?'var(--vert)':'var(--rouge)';
   }
-
   if(chartPoids){chartPoids.destroy();chartPoids=null;}
-  if(chartTemp) {chartTemp.destroy(); chartTemp=null;}
+  if(chartTemp){chartTemp.destroy();chartTemp=null;}
   if(chartHygro){chartHygro.destroy();chartHygro=null;}
   chartPoids=makeDetailChart('d-poids',labels,poids,'#E0A94A',8,'kg');
-  chartTemp =makeDetailChart('d-temp', labels,temp, '#D08469',4,'°C');
+  chartTemp=makeDetailChart('d-temp',labels,temp,'#D08469',4,'\u00b0C');
   chartHygro=makeDetailChart('d-hygro',labels,hygro,'#7BA3C9',4,'%');
 }
 
-// ── GRAPHIQUES DÉTAIL avec curseur
+// ── GRAPHIQUES
 function makeDetailChart(id,labels,data,color,maxTicks,unite){
-  const canvas=document.getElementById(id);
-  if(!canvas) return null;
+  const canvas=document.getElementById(id);if(!canvas) return null;
   const container=canvas.parentElement;
-
-  // Bulle curseur
-  let oldBubble=container.querySelector('.cursor-bubble');
-  if(oldBubble) oldBubble.remove();
+  let oldB=container.querySelector('.cursor-bubble');if(oldB) oldB.remove();
   const bubble=document.createElement('div');
   bubble.className='cursor-bubble';
-  bubble.style.cssText=`display:none;position:absolute;z-index:50;pointer-events:none;
-    background:#1B211C;border:1px solid ${color};border-radius:10px;
-    padding:7px 11px;font-size:12px;line-height:1.6;
-    box-shadow:0 2px 12px rgba(0,0,0,.5);min-width:130px;`;
-  bubble.innerHTML=`<div class="b-date" style="color:#7E8A7E;font-size:11px;"></div>
-    <div class="b-val" style="color:${color};font-weight:700;font-size:15px;"></div>`;
-  container.style.position='relative';
-  container.appendChild(bubble);
-
-  const crosshair={
-    id:'ch-'+id,
-    afterDraw(chart){
-      if(chart._cx==null) return;
-      const {ctx:c,chartArea:{top,bottom}}=chart;
-      c.save();
-      c.strokeStyle='rgba(255,255,255,0.2)';
-      c.lineWidth=1;c.setLineDash([4,4]);
-      c.beginPath();c.moveTo(chart._cx,top);c.lineTo(chart._cx,bottom);c.stroke();
-      if(chart._cy!=null){
-        c.setLineDash([]);
-        c.beginPath();c.arc(chart._cx,chart._cy,5,0,Math.PI*2);
-        c.fillStyle=color;c.fill();
-        c.strokeStyle='#1B211C';c.lineWidth=2;c.stroke();
-      }
-      c.restore();
-    }
-  };
-
-  const chart=new Chart(canvas,{
-    type:'line',
-    data:{labels,datasets:[{data,borderColor:color,backgroundColor:color+'22',
-      fill:true,tension:0.3,pointRadius:0,borderWidth:2,spanGaps:false}]},
+  bubble.style.cssText='display:none;position:absolute;z-index:50;pointer-events:none;background:#1B211C;border:1px solid '+color+';border-radius:10px;padding:7px 11px;font-size:12px;line-height:1.6;box-shadow:0 2px 12px rgba(0,0,0,.5);min-width:130px;';
+  bubble.innerHTML='<div class="b-date" style="color:#7E8A7E;font-size:11px;"></div><div class="b-val" style="color:'+color+';font-weight:700;font-size:15px;"></div>';
+  container.style.position='relative';container.appendChild(bubble);
+  const ch={id:'ch-'+id,afterDraw(chart){
+    if(chart._cx==null) return;
+    const {ctx:c,chartArea:{top,bottom}}=chart;
+    c.save();c.strokeStyle='rgba(255,255,255,0.15)';c.lineWidth=1;c.setLineDash([4,4]);
+    c.beginPath();c.moveTo(chart._cx,top);c.lineTo(chart._cx,bottom);c.stroke();
+    if(chart._cy!=null){
+      c.setLineDash([]);c.beginPath();c.arc(chart._cx,chart._cy,5,0,Math.PI*2);
+      c.fillStyle=color;c.fill();c.strokeStyle='#1B211C';c.lineWidth=2;c.stroke();
+    }c.restore();
+  }};
+  const chart=new Chart(canvas,{type:'line',
+    data:{labels,datasets:[{data,borderColor:color,backgroundColor:color+'22',fill:true,
+      tension:0.3,pointRadius:0,borderWidth:2,spanGaps:false}]},
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:false},tooltip:{enabled:false}},
-      scales:{
-        x:{ticks:{color:'#7E8A7E',maxTicksLimit:maxTicks,font:{size:9}},grid:{color:'#2A322B'}},
-        y:{ticks:{color:'#7E8A7E',font:{size:9}},grid:{color:'#2A322B'}}
-      },animation:false},
-    plugins:[crosshair]
-  });
-
+      scales:{x:{ticks:{color:'#7E8A7E',maxTicksLimit:maxTicks,font:{size:9}},grid:{color:'#2A322B'}},
+        y:{ticks:{color:'#7E8A7E',font:{size:9}},grid:{color:'#2A322B'}}},animation:false},
+    plugins:[ch]});
   function onMove(e){
     e.preventDefault();
     const rect=canvas.getBoundingClientRect();
     const cx=e.touches?e.touches[0].clientX:e.clientX;
     const x=cx-rect.left;
-
-    // Trouver le point le plus proche par position X
     const meta=chart.getDatasetMeta(0);
-    if(!meta||!meta.data||!meta.data.length) return;
-    let closest=0;let minDist=Infinity;
-    meta.data.forEach((pt,i)=>{
-      const dist=Math.abs(pt.x-x);
-      if(dist<minDist){minDist=dist;closest=i;}
-    });
-
-    const val=data[closest];
-    if(val==null||isNaN(val)) return;
-    chart._cx=meta.data[closest].x;
-    chart._cy=meta.data[closest].y;
-    chart.draw();
-
-    // Date et heure
-    const iso=_rawDates[closest]||'';
-    const d=new Date(iso);
-    const dateStr=isNaN(d.getTime())?iso
+    if(!meta?.data?.length) return;
+    let closest=0;let minD=Infinity;
+    meta.data.forEach((pt,i)=>{const d=Math.abs(pt.x-x);if(d<minD){minD=d;closest=i;}});
+    const val=data[closest];if(val==null||isNaN(val)) return;
+    chart._cx=meta.data[closest].x;chart._cy=meta.data[closest].y;chart.draw();
+    const d=new Date(_rawDates[closest]||'');
+    const ds=isNaN(d.getTime())?(_rawDates[closest]||'')
       :d.toLocaleDateString('fr',{day:'2-digit',month:'short',year:'numeric'});
-    const heureStr=isNaN(d.getTime())?''
-      :d.toLocaleTimeString('fr',{hour:'2-digit',minute:'2-digit'});
-    bubble.querySelector('.b-date').innerHTML=
-      `${dateStr} <span style="color:${color}">${heureStr}</span>`;
-    bubble.querySelector('.b-val').textContent=
-      parseFloat(val).toFixed(unite==='kg'?2:1)+' '+unite;
-
-    // Position bulle
-    const bW=150;
-    let bL=x+10;
+    const hs=isNaN(d.getTime())?'':d.toLocaleTimeString('fr',{hour:'2-digit',minute:'2-digit'});
+    bubble.querySelector('.b-date').innerHTML=ds+' <span style="color:'+color+'">'+hs+'</span>';
+    bubble.querySelector('.b-val').textContent=parseFloat(val).toFixed(unite==='kg'?2:1)+' '+unite;
+    const bW=150;let bL=x+10;
     if(bL+bW>container.offsetWidth) bL=x-bW-10;
-    bubble.style.left=Math.max(0,bL)+'px';
-    bubble.style.top='4px';
-    bubble.style.display='block';
+    bubble.style.left=Math.max(0,bL)+'px';bubble.style.top='4px';bubble.style.display='block';
   }
-  function onLeave(){
-    bubble.style.display='none';
-    chart._cx=null;chart._cy=null;chart.draw();
-  }
+  function onLeave(){bubble.style.display='none';chart._cx=null;chart._cy=null;chart.draw();}
   canvas.addEventListener('mousemove',onMove);
   canvas.addEventListener('touchmove',e=>{e.preventDefault();onMove(e);},{passive:false});
   canvas.addEventListener('mouseleave',onLeave);
@@ -600,36 +857,125 @@ function makeMini(el,data,color){
       scales:{x:{display:false},y:{display:false}},animation:false}});
 }
 
-// ── VISITES
+// ── GESTION FICHES
+function afficherFiches(){
+  let html='';
+  for(const id of ORDRE){
+    const f=fiches[id]||{};const r=ruchesData[id]?.dernierReleve;
+    const ph=(photos[id]||[]);
+    const sante=calcSante(id);
+    html+=`<div class="ruche-sheet">
+      <h3>${RUCHES_META[id].emoji} ${RUCHES_META[id].nom}
+        <button class="notif-btn" style="font-size:11px;padding:5px 10px;" onclick="ouvrirFiche('${id}')">Modifier</button>
+      </h3>
+      <div class="info-grid">
+        <div class="info-cell"><div class="lbl">Race</div><div class="val">${f.race||'Non sp\u00e9cifi\u00e9e'}</div></div>
+        <div class="info-cell"><div class="lbl">Reine</div><div class="val">${f.reine||'\u2014'}</div></div>
+        <div class="info-cell"><div class="lbl">Ann\u00e9e reine</div><div class="val">${f.annee||'\u2014'}</div></div>
+        <div class="info-cell"><div class="lbl">Origine</div><div class="val">${f.origine||'\u2014'}</div></div>
+        ${r?`<div class="info-cell"><div class="lbl">Poids actuel</div><div class="val" style="color:var(--ambre);">${r.poids.toFixed(1)} kg</div></div>`:''}
+        ${sante?`<div class="info-cell"><div class="lbl">Sant\u00e9</div><div class="val" style="color:${couleurSante(sante)};">${sante}/100</div></div>`:''}
+      </div>
+      ${f.obs?`<div style="margin-top:10px;font-size:12px;color:var(--gris);">${f.obs}</div>`:''}
+      <div style="margin-top:12px;">
+        <div style="font-size:11px;color:var(--gris);margin-bottom:6px;">Photos</div>
+        <div class="photos-grid">
+          ${ph.map(p=>`<img class="photo-thumb" src="${p}" onclick="voirPhoto('${p}')">`).join('')}
+          <button class="photo-add" onclick="ajouterPhoto('${id}')">+</button>
+        </div>
+      </div>
+    </div>`;
+  }
+  document.getElementById('fiches-liste').innerHTML=html||'<div class="spinner">Chargement...</div>';
+}
+
+function ouvrirFiche(id){
+  const f=fiches[id]||{};
+  document.getElementById('fiche-id-hidden').dataset.id=id;
+  document.getElementById('fiche-race').value=f.race||'';
+  document.getElementById('fiche-reine').value=f.reine||'';
+  document.getElementById('fiche-annee').value=f.annee||'';
+  document.getElementById('fiche-origine').value=f.origine||'';
+  document.getElementById('fiche-obs').value=f.obs||'';
+  ouvrirModal('modal-fiche');
+}
+document.getElementById('btn-save-fiche').addEventListener('click',()=>{
+  const id=document.getElementById('fiche-id-hidden').dataset.id;
+  fiches[id]={race:document.getElementById('fiche-race').value,
+    reine:document.getElementById('fiche-reine').value,
+    annee:document.getElementById('fiche-annee').value,
+    origine:document.getElementById('fiche-origine').value,
+    obs:document.getElementById('fiche-obs').value};
+  sauver('fiches',fiches);fermerModal('modal-fiche');afficherFiches();
+});
+
+function ajouterPhoto(id){
+  const inp=document.createElement('input');inp.type='file';inp.accept='image/*';
+  inp.onchange=e=>{
+    const file=e.target.files[0];if(!file) return;
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      if(!photos[id]) photos[id]=[];
+      photos[id].push(ev.target.result);
+      sauver('photos',photos);afficherFiches();
+    };reader.readAsDataURL(file);
+  };inp.click();
+}
+function voirPhoto(src){
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:999;display:flex;align-items:center;justify-content:center;';
+  ov.innerHTML='<img src="'+src+'" style="max-width:95%;max-height:95%;border-radius:12px;">';
+  ov.onclick=()=>ov.remove();document.body.appendChild(ov);
+}
+
+// ── VISITES + DICTÉE VOCALE
 function afficherVisites(){
   const el=document.getElementById('visites-liste');
   if(!visites.length){
-    el.innerHTML=`<div class="card" style="margin-top:14px;text-align:center;">
-      <div style="font-size:32px;margin-bottom:8px;">📋</div>
-      <div style="color:var(--gris);font-size:13px;">Aucune visite.<br>Appuie sur + pour en ajouter.</div></div>`;
+    el.innerHTML='<div class="list-item" style="text-align:center;"><div style="font-size:28px;margin-bottom:8px;">\u{1F4CB}</div><div style="color:var(--gris);font-size:13px;">Aucune visite.\nAppuie sur + pour en ajouter.</div></div>';
     return;
   }
   el.innerHTML=[...visites].sort((a,b)=>b.date.localeCompare(a.date)).map(v=>{
-    const d=new Date(v.date);
-    return `<div class="visite-item">
-      <div class="visite-date"><span class="jour">${d.getDate()}</span>
-        ${d.toLocaleDateString('fr',{month:'short'})}</div>
-      <div class="visite-body"><h3>${RUCHES_META[v.ruche]?.nom||v.ruche}</h3>
-        <p>${v.obs||'Aucune observation.'}</p>
-        <span class="visite-tag">Visite</span></div></div>`;
+    const d=new Date(v.date);const stars='\u2605'.repeat(parseInt(v.etat||3))+'\u2606'.repeat(5-parseInt(v.etat||3));
+    return `<div class="list-item visite-item">
+      <div class="visite-date"><span class="jour">${d.getDate()}</span>${d.toLocaleDateString('fr',{month:'short'})}</div>
+      <div style="flex:1;">
+        <div style="font-weight:700;font-size:13px;">${RUCHES_META[v.ruche]?.nom||v.ruche}</div>
+        <div style="font-size:12px;color:var(--gris);margin-top:2px;">${v.obs||'Aucune observation.'}</div>
+        <div style="font-size:11px;margin-top:4px;">
+          ${v.reine?'<span class="tag tag-ok">Reine: '+v.reine+'</span> ':''}
+          <span style="color:var(--ambre)">${stars}</span>
+        </div>
+      </div></div>`;
   }).join('');
 }
+
+// Dictée vocale
+let micActive=false;
+document.getElementById('btn-mic').addEventListener('click',()=>{
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){alert('Dictée vocale non disponible sur ce navigateur.');return;}
+  if(micActive){micRecog?.stop();micActive=false;document.getElementById('btn-mic').textContent='\u{1F3A4}';return;}
+  micRecog=new SR();micRecog.lang='fr-FR';micRecog.continuous=true;micRecog.interimResults=true;
+  micRecog.onresult=e=>{
+    const txt=Array.from(e.results).map(r=>r[0].transcript).join('');
+    document.getElementById('v-obs').value=txt;
+  };
+  micRecog.onerror=()=>{micActive=false;document.getElementById('btn-mic').textContent='\u{1F3A4}';};
+  micRecog.onend=()=>{micActive=false;document.getElementById('btn-mic').textContent='\u{1F3A4}';};
+  micRecog.start();micActive=true;
+  document.getElementById('btn-mic').textContent='\u23F9 Stop';
+});
+
 document.getElementById('fab').addEventListener('click',()=>{
   document.getElementById('v-date').value=new Date().toISOString().slice(0,10);
-  document.getElementById('modal-visite').classList.add('open');
+  ouvrirModal('modal-visite');
 });
-document.getElementById('btn-annuler-visite').addEventListener('click',()=>
-  document.getElementById('modal-visite').classList.remove('open'));
 document.getElementById('btn-save-visite').addEventListener('click',()=>{
   visites.push({id:Date.now(),ruche:document.getElementById('v-ruche').value,
-    date:document.getElementById('v-date').value,obs:document.getElementById('v-obs').value.trim()});
-  localStorage.setItem('visites',JSON.stringify(visites));
-  document.getElementById('modal-visite').classList.remove('open');
+    date:document.getElementById('v-date').value,obs:document.getElementById('v-obs').value.trim(),
+    reine:document.getElementById('v-reine').value,etat:document.getElementById('v-etat').value});
+  sauver('visites',visites);fermerModal('modal-visite');
   document.getElementById('v-obs').value='';afficherVisites();
 });
 
@@ -637,123 +983,264 @@ document.getElementById('btn-save-visite').addEventListener('click',()=>{
 function afficherSanitaire(){
   const vl=document.getElementById('varroa-liste');
   if(varroas.length){
-    vl.innerHTML=varroas.map(v=>`
-      <div class="rgl-row" style="border-radius:12px;border-bottom:1px solid var(--bord);margin-bottom:6px;">
+    vl.innerHTML='<div class="rgl-group" style="margin:0;">'+
+      varroas.map(v=>`<div class="rgl-row" style="border-radius:12px;border-bottom:1px solid var(--bord);margin-bottom:6px;">
         <div><div style="font-weight:700;">${v.produit||'Traitement'}</div>
-          <div class="rgl-val">${RUCHES_META[v.ruche]?.nom||v.ruche} · ${formatDateSimple(v.date)}</div>
-          ${v.notes?`<div class="rgl-val">${v.notes}</div>`:''}</div>
-        <span style="font-size:18px;">🐛</span></div>`).join('')+
-      `<div style="text-align:center;margin-top:4px;">
-        <button class="btn btn-primary" id="btn-add-varroa2" style="border-radius:11px;">+ Nouveau traitement</button></div>`;
-    document.getElementById('btn-add-varroa2')?.addEventListener('click',ouvrirModalVarroa);
+        <div class="rgl-val">${RUCHES_META[v.ruche]?.nom||v.ruche} \u00b7 ${formatDateSimple(v.date)}</div>
+        ${v.notes?'<div class="rgl-val">'+v.notes+'</div>':''}</div>
+        <span style="font-size:18px;">\u{1F42C}</span></div>`).join('')+'</div>'+
+      '<div style="text-align:center;margin:4px 14px;"><button class="btn btn-primary" style="border-radius:11px;" onclick="ouvrirModal(\'modal-varroa\')">+ Nouveau traitement</button></div>';
   } else {
-    vl.innerHTML=`<div class="rgl-row" style="border-radius:12px;border-bottom:1px solid var(--bord);">
-      <div><div style="font-size:14px;font-weight:700;">Aucun traitement</div>
-        <div class="rgl-val">Appuie sur + pour en ajouter</div></div>
-      <button class="notif-btn" id="btn-add-varroa">+</button></div>`;
-    document.getElementById('btn-add-varroa')?.addEventListener('click',ouvrirModalVarroa);
+    vl.innerHTML='<div class="rgl-group" style="margin:0;"><div class="rgl-row" style="border-radius:12px;border-bottom:1px solid var(--bord);">'+
+      '<div><div style="font-size:14px;font-weight:700;">Aucun traitement</div>'+
+      '<div class="rgl-val">Appuie sur + pour en ajouter</div></div>'+
+      '<button class="notif-btn" onclick="ouvrirModal(\'modal-varroa\')">+</button></div></div>';
   }
   const rl=document.getElementById('recoltes-liste');
   if(recoltes.length){
-    rl.innerHTML=recoltes.map(r=>`<div class="recolte-item">
-      <div class="titre">${RUCHES_META[r.ruche]?.nom||r.ruche} — ${r.kg} kg 🍯</div>
-      <div class="detail">${formatDateSimple(r.date)}${r.notes?' · '+r.notes:''}</div></div>`).join('');
+    rl.innerHTML=recoltes.map(r=>`<div class="list-item">
+      <div style="font-weight:700;">${RUCHES_META[r.ruche]?.nom||r.ruche} \u2014 ${r.kg} kg \u{1F36F}</div>
+      <div style="font-size:12px;color:var(--gris);">${formatDateSimple(r.date)}${r.notes?' \u00b7 '+r.notes:''}</div>
+    </div>`).join('');
     const tot=recoltes.reduce((s,r)=>s+parseFloat(r.kg||0),0);
-    document.getElementById('recolte-total').textContent=`Total récolté : ${tot.toFixed(1)} kg`;
+    document.getElementById('recolte-total').textContent='Total r\u00e9colt\u00e9 : '+tot.toFixed(1)+' kg';
   } else {
-    rl.innerHTML=`<div class="rgl-row" style="border-radius:12px;border-bottom:1px solid var(--bord);margin:0 14px 8px;">
-      <div style="color:var(--gris);font-size:13px;">Aucune récolte.</div></div>`;
+    rl.innerHTML='<div class="list-item" style="color:var(--gris);font-size:13px;">Aucune r\u00e9colte enregistr\u00e9e.</div>';
     document.getElementById('recolte-total').textContent='';
   }
-  document.getElementById('production-liste').innerHTML=ORDRE.map(id=>{
-    const kg=recoltes.filter(r=>r.ruche===id).reduce((s,r)=>s+parseFloat(r.kg||0),0);
-    return `<div class="rgl-row" style="margin:0 14px;border-radius:12px;border-bottom:1px solid var(--bord);margin-bottom:6px;">
-      <div><div style="font-weight:700;">${RUCHES_META[id].emoji} ${RUCHES_META[id].nom}</div>
-        <div class="rgl-val">${kg.toFixed(1)} kg récolté</div></div>
-      <span style="font-size:18px;">🍯</span></div>`;
-  }).join('');
-}
-function ouvrirModalVarroa(){
-  document.getElementById('vr-date').value=new Date().toISOString().slice(0,10);
-  document.getElementById('modal-varroa').classList.add('open');
 }
 document.getElementById('btn-add-recolte').addEventListener('click',()=>{
   document.getElementById('r-date').value=new Date().toISOString().slice(0,10);
-  document.getElementById('modal-recolte').classList.add('open');
+  ouvrirModal('modal-recolte');
 });
-document.getElementById('btn-annuler-recolte').addEventListener('click',()=>
-  document.getElementById('modal-recolte').classList.remove('open'));
 document.getElementById('btn-save-recolte').addEventListener('click',()=>{
   const kg=parseFloat(document.getElementById('r-kg').value);if(!kg||kg<=0) return;
   recoltes.push({id:Date.now(),ruche:document.getElementById('r-ruche').value,
     date:document.getElementById('r-date').value,kg,
     notes:document.getElementById('r-notes').value.trim()});
-  localStorage.setItem('recoltes',JSON.stringify(recoltes));
-  document.getElementById('modal-recolte').classList.remove('open');
+  sauver('recoltes',recoltes);fermerModal('modal-recolte');
   document.getElementById('r-kg').value='';document.getElementById('r-notes').value='';
   afficherSanitaire();
 });
-document.getElementById('btn-annuler-varroa').addEventListener('click',()=>
-  document.getElementById('modal-varroa').classList.remove('open'));
 document.getElementById('btn-save-varroa').addEventListener('click',()=>{
   varroas.push({id:Date.now(),ruche:document.getElementById('vr-ruche').value,
     date:document.getElementById('vr-date').value,
     produit:document.getElementById('vr-produit').value.trim(),
     notes:document.getElementById('vr-notes').value.trim()});
-  localStorage.setItem('varroas',JSON.stringify(varroas));
-  document.getElementById('modal-varroa').classList.remove('open');
-  document.getElementById('vr-produit').value='';document.getElementById('vr-notes').value='';
-  afficherSanitaire();
+  sauver('varroas',varroas);fermerModal('modal-varroa');
+  document.getElementById('vr-produit').value='';afficherSanitaire();
 });
 
-// ── CARTE
-function initCarte(){
-  const lats=ORDRE.map(id=>parseFloat(ruchers[id]?.lat)||null).filter(Boolean);
-  const lngs=ORDRE.map(id=>parseFloat(ruchers[id]?.lng)||null).filter(Boolean);
-  const clat=lats.length?lats.reduce((a,b)=>a+b)/lats.length:43.95;
-  const clng=lngs.length?lngs.reduce((a,b)=>a+b)/lngs.length:5.72;
-  let markers='';
-  for(const id of ORDRE){
-    const lat=parseFloat(ruchers[id]?.lat);const lng=parseFloat(ruchers[id]?.lng);
-    if(!isNaN(lat)&&!isNaN(lng)) markers+=`&marker=${lat},${lng}`;
+// ── NOURRISSEMENTS
+function afficherNourrissements(){
+  const el=document.getElementById('nourrissements-liste');
+  if(!nourrissements.length){
+    el.innerHTML='<div class="list-item" style="color:var(--gris);font-size:13px;">Aucun nourrissement enregistr\u00e9.</div>';
+    return;
   }
-  const f=document.getElementById('carte-frame');
-  f.src=`https://www.openstreetmap.org/export/embed.html?bbox=${clng-.8},${clat-.5},${clng+.8},${clat+.5}&layer=mapnik${markers}`;
-  f.style.display='block';
-  document.getElementById('carte-ruchers').innerHTML=ORDRE.map(id=>{
-    const r=ruchesData[id]?.dernierReleve;
-    const lat=ruchers[id]?.lat||'—';const lng=ruchers[id]?.lng||'—';
-    return `<div class="rucher-pin"><div class="pin-ico">${RUCHES_META[id].emoji}</div>
-      <div class="pin-info"><h3>${RUCHES_META[id].nom}</h3>
-        <p>${lat!=='—'?lat+'°N, '+lng+'°E':'Coordonnées non renseignées'}</p></div>
-      <div class="pin-poids">${r?r.poids.toFixed(1)+' kg':'—'}</div></div>`;
-  }).join('');
+  el.innerHTML=[...nourrissements].sort((a,b)=>b.date.localeCompare(a.date)).map(n=>`
+    <div class="list-item">
+      <div style="font-weight:700;">${RUCHES_META[n.ruche]?.nom||n.ruche} \u2014 ${n.type} (${n.qte||'?'})</div>
+      <div style="font-size:12px;color:var(--gris);">${formatDateSimple(n.date)}${n.notes?' \u00b7 '+n.notes:''}</div>
+    </div>`).join('');
+}
+document.getElementById('btn-add-nourr').addEventListener('click',()=>{
+  document.getElementById('n-date').value=new Date().toISOString().slice(0,10);
+  ouvrirModal('modal-nourr');
+});
+document.getElementById('btn-save-nourr').addEventListener('click',()=>{
+  nourrissements.push({id:Date.now(),ruche:document.getElementById('n-ruche').value,
+    date:document.getElementById('n-date').value,type:document.getElementById('n-type').value,
+    qte:document.getElementById('n-qte').value,notes:document.getElementById('n-notes').value.trim()});
+  sauver('nourrissements',nourrissements);fermerModal('modal-nourr');
+  document.getElementById('n-qte').value='';document.getElementById('n-notes').value='';
+  afficherNourrissements();
+});
+
+function afficherSuivi(){
+  afficherVisites();
 }
 
-// ── RÉGLAGES
+// ── M\u00c9T\u00c9O (Open-Meteo, gratuit, sans cl\u00e9)
+let meteoChargee=false;
+async function chargerMeteo(){
+  if(meteoChargee) return;
+  // Utiliser les coordonnées du premier rucher configuré
+  const coords=ORDRE.map(id=>({lat:parseFloat(ruchers[id]?.lat),lng:parseFloat(ruchers[id]?.lng)}))
+    .find(c=>!isNaN(c.lat)&&!isNaN(c.lng));
+  if(!coords){
+    document.getElementById('meteo-content').innerHTML=
+      '<div class="banner banner-warn" style="margin:12px 14px;">\u{1F4CD} Configure les coordonn\u00e9es GPS de tes ruchers dans R\u00e9glages pour voir la m\u00e9t\u00e9o.</div>';
+    return;
+  }
+  try{
+    const url=`https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lng}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,weathercode&current_weather=true&timezone=auto&forecast_days=7`;
+    const data=await (await fetch(url)).json();
+    const cw=data.current_weather;
+    const wmo=WMO[cw.weathercode]||{l:'Variable',e:'\u{1F324}\uFE0F'};
+    const conseil=conseilApicole(cw.temperature,cw.weathercode,cw.windspeed);
+    let html=`<div class="meteo-current">
+      <div style="font-size:36px;">${wmo.e}</div>
+      <div class="meteo-temp">${Math.round(cw.temperature)}\u00b0C</div>
+      <div class="meteo-desc">${wmo.l}</div>
+      <div class="meteo-details">
+        <span>\u{1F4A8} Vent <b>${Math.round(cw.windspeed)} km/h</b></span>
+        <span>\u{1F9ED} ${cw.winddirection}\u00b0</span>
+      </div>
+    </div>`;
+    html+='<div class="sec-title">Pr\u00e9visions 7 jours</div>';
+    html+='<div class="forecast-row">';
+    const days=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+    data.daily.time.forEach((t,i)=>{
+      const d=new Date(t);const wc=WMO[data.daily.weathercode[i]]||{e:'\u{1F324}\uFE0F'};
+      html+=`<div class="forecast-day">
+        <div class="fd-day">${days[d.getDay()]}</div>
+        <div class="fd-ico">${wc.e}</div>
+        <div class="fd-max">${Math.round(data.daily.temperature_2m_max[i])}\u00b0</div>
+        <div class="fd-min">${Math.round(data.daily.temperature_2m_min[i])}\u00b0</div>
+        ${data.daily.precipitation_sum[i]>0?'<div style="font-size:10px;color:var(--bleu);">'+data.daily.precipitation_sum[i].toFixed(1)+'mm</div>':''}
+      </div>`;
+    });
+    html+='</div>';
+    html+=`<div class="conseil-abeille"><strong>\u{1F41D} Conseil apicole</strong><br>${conseil}</div>`;
+    html+='<iframe class="carte-frame" style="margin-top:12px;" src="https://www.openstreetmap.org/export/embed.html?bbox='+(coords.lng-.5)+','+(coords.lat-.35)+','+(coords.lng+.5)+','+(coords.lat+.35)+'&layer=mapnik&marker='+coords.lat+','+coords.lng+'" frameborder="0"></iframe>';
+    document.getElementById('meteo-content').innerHTML=html;
+    meteoChargee=true;
+  }catch(e){
+    document.getElementById('meteo-content').innerHTML='<div class="banner banner-warn" style="margin:12px 14px;">\u26A0\uFE0F Erreur m\u00e9t\u00e9o: '+e.message+'</div>';
+  }
+}
+
+function conseilApicole(temp,wmo,wind){
+  if(temp<8) return 'Temp\u00e9rature trop basse \u2014 les abeilles restent en grappe. Ne pas ouvrir les ruches.';
+  if(wmo>=61&&wmo<=67) return 'Pluie en cours \u2014 les abeilles restent \u00e0 la ruche. Bon moment pour les observations \u00e0 distance.';
+  if(wmo>=80&&wmo<=82) return 'Averses probables \u2014 pr\u00e9voir une visite rapide entre les \u00e9claircies.';
+  if(wmo>=95) return 'Orage \u2014 ne pas ouvrir les ruches, les abeilles sont \u00e0 cran.';
+  if(wind>25) return 'Vent fort \u2014 les abeilles volent peu. Si visite, prot\u00e8ge-toi bien.';
+  if(temp>=15&&temp<=28&&(wmo<=3)) return '\u2705 Conditions excellentes pour une visite ! Abeilles actives, bon butinage.';
+  if(temp>=10&&temp<15) return 'Conditions correctes. Visite possible mais courte, les abeilles sont peu actives.';
+  if(temp>28) return 'Grosse chaleur \u2014 risque d\u2019essaimage. V\u00e9rifie l\u2019espace dans les hausses.';
+  return 'Conditions variables \u2014 surveille l\u2019\u00e9volution avant de planifier une visite.';
+}
+
+// ── IA (Claude API)
+document.getElementById('btn-analyser').addEventListener('click',async()=>{
+  const id=document.getElementById('ia-ruche-sel').value;
+  const btn=document.getElementById('btn-analyser');
+  const res=document.getElementById('ia-result-poids');
+  btn.disabled=true;btn.textContent='\u23F3 Analyse en cours\u2026';
+  res.innerHTML='<div class="ia-loading">\u23F3 Analyse de la courbe en cours\u2026</div>';
+  try{
+    let histo=histoCache[id+'-30'];
+    if(!histo){
+      const raw=await (await fetch(API+'/api/ruches/'+id+'/historique?jours=30')).json();
+      histo=Array.isArray(raw)?raw.map(p=>({date:p.date_mesure||p.date,poids:parseFloat(p.poids),
+        temperature:parseFloat(p.temperature)})):[];
+      histoCache[id+'-30']=histo;
+    }
+    const MAX=50;let pts=histo;
+    if(pts.length>MAX){const step=Math.ceil(pts.length/MAX);pts=pts.filter((_,i)=>i%step===0);}
+    const dataStr=pts.map(p=>p.date.slice(0,16)+' : '+p.poids.toFixed(1)+'kg ('+p.temperature+'\u00b0C)').join('\n');
+    const alertes=detecterAlertes(id).map(a=>a.txt).join(', ')||'aucune';
+    const prompt='Tu es un expert apiculteur fran\u00e7ais. Analyse la courbe de poids de la ruche "'+RUCHES_META[id].nom+'" sur les 30 derniers jours.\n\nDonn\u00e9es (date, poids, temp\u00e9rature int\u00e9rieure):\n'+dataStr+'\n\nAlertes d\u00e9tect\u00e9es: '+alertes+'\n\nDonne une analyse structur\u00e9e avec:\n1. \u00c9tat g\u00e9n\u00e9ral de la colonie\n2. Points remarquables (pics, baisses, tendances)\n3. Interpr\u00e9tation apicole\n4. Recommandations concr\u00e8tes\n\nSois pr\u00e9cis et pratique. R\u00e9ponds en fran\u00e7ais.';
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,
+        messages:[{role:'user',content:prompt}]})});
+    const d=await resp.json();
+    const txt=d.content?.[0]?.text||'Erreur de r\u00e9ponse';
+    res.innerHTML='<div class="ia-result">'+txt.replace(/\n/g,'<br>')+'</div>';
+  }catch(e){res.innerHTML='<div class="banner banner-warn" style="margin:0;margin-top:10px;">\u26A0\uFE0F '+e.message+'</div>';}
+  btn.disabled=false;btn.textContent='\u{1F916} Analyser avec l\'IA';
+});
+
+// Analyse photo
+let photoBase64=null;let photoType=null;
+document.getElementById('photo-input').addEventListener('change',e=>{
+  const file=e.target.files[0];if(!file) return;
+  photoType=file.type;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    photoBase64=ev.target.result.split(',')[1];
+    const prev=document.getElementById('photo-preview');
+    prev.src=ev.target.result;prev.style.display='block';
+    document.getElementById('btn-analyser-photo').style.display='block';
+  };reader.readAsDataURL(file);
+});
+
+document.getElementById('btn-analyser-photo').addEventListener('click',async()=>{
+  if(!photoBase64) return;
+  const btn=document.getElementById('btn-analyser-photo');
+  const res=document.getElementById('ia-result-photo');
+  btn.disabled=true;btn.textContent='\u23F3 Analyse en cours\u2026';
+  res.innerHTML='<div class="ia-loading">\u23F3 Analyse du cadre en cours\u2026</div>';
+  try{
+    const prompt='Tu es un expert apiculteur. Analyse ce cadre de ruche en d\u00e9tail:\n1. \u00c9tat g\u00e9n\u00e9ral du cadre\n2. Couvain (pr\u00e9sence, qualit\u00e9, op\u00e9rculation)\n3. Reine visible ou indices de pr\u00e9sence\n4. R\u00e9serves (miel, pollen)\n5. Signes de maladies ou probl\u00e8mes (loque, varroa, nosema\u2026)\n6. Recommandations imm\u00e9diates\n\nSois pr\u00e9cis et pratique. R\u00e9ponds en fran\u00e7ais.';
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,
+        messages:[{role:'user',content:[
+          {type:'image',source:{type:'base64',media_type:photoType,data:photoBase64}},
+          {type:'text',text:prompt}
+        ]}]})});
+    const d=await resp.json();
+    const txt=d.content?.[0]?.text||'Erreur';
+    res.innerHTML='<div class="ia-result">'+txt.replace(/\n/g,'<br>')+'</div>';
+  }catch(e){res.innerHTML='<div class="banner banner-warn" style="margin:0;margin-top:10px;">\u26A0\uFE0F '+e.message+'</div>';}
+  btn.disabled=false;btn.textContent='\u{1F916} Analyser le cadre';
+});
+
+// Pr\u00e9vision r\u00e9coltes
+document.getElementById('btn-prevision').addEventListener('click',async()=>{
+  const btn=document.getElementById('btn-prevision');
+  const res=document.getElementById('ia-result-prevision');
+  btn.disabled=true;btn.textContent='\u23F3 Pr\u00e9vision en cours\u2026';
+  res.innerHTML='<div class="ia-loading">\u23F3 Calcul en cours\u2026</div>';
+  try{
+    const histo30=await Promise.all(ORDRE.map(async id=>{
+      const raw=await (await fetch(API+'/api/ruches/'+id+'/historique?jours=30')).json();
+      const pts=Array.isArray(raw)?raw.map(p=>({date:p.date_mesure||p.date,poids:parseFloat(p.poids)})):[];
+      return {id,nom:RUCHES_META[id].nom,pts};
+    }));
+    const totalRecolte=recoltes.reduce((s,r)=>s+parseFloat(r.kg||0),0);
+    const dataStr=histo30.map(h=>{
+      const pp=h.pts.filter(p=>!isNaN(p.poids));
+      const trend=pp.length>=2?pp[pp.length-1].poids-pp[0].poids:0;
+      return h.nom+': poids actuel='+(ruchesData[h.id]?.dernierReleve?.poids||'?')+'kg, tendance 30j='+trend.toFixed(1)+'kg';
+    }).join('\n');
+    const prompt='Tu es un expert apiculteur. Base-toi sur ces donn\u00e9es de ruches pour faire une pr\u00e9vision de r\u00e9colte:\n\n'+dataStr+'\n\nTotal d\u00e9j\u00e0 r\u00e9colt\u00e9 cette ann\u00e9e: '+totalRecolte.toFixed(1)+' kg\nDate actuelle: '+new Date().toLocaleDateString('fr')+'\n\nDonne:\n1. Estimation de r\u00e9colte par ruche pour les 2-3 prochains mois\n2. Total estim\u00e9\n3. Conditions \u00e0 surveiller\n4. Moment optimal pour la r\u00e9colte\n\nSois pr\u00e9cis et pratique.';
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:800,
+        messages:[{role:'user',content:prompt}]})});
+    const d=await resp.json();
+    const txt=d.content?.[0]?.text||'Erreur';
+    res.innerHTML='<div class="ia-result">'+txt.replace(/\n/g,'<br>')+'</div>';
+  }catch(e){res.innerHTML='<div class="banner banner-warn" style="margin:0;margin-top:10px;">\u26A0\uFE0F '+e.message+'</div>';}
+  btn.disabled=false;btn.textContent='\u{1F4CA} Pr\u00e9voir ma r\u00e9colte';
+});
+
+// ── R\u00c9GLAGES
 function initGpsReglages(){
   document.getElementById('gps-liste').innerHTML=ORDRE.map(id=>`
-    <div style="background:var(--carte);border:1px solid var(--bord);border-radius:12px;padding:14px 15px;margin-bottom:8px;">
+    <div style="background:var(--carte);border:1px solid var(--bord);border-radius:12px;padding:13px 14px;margin-bottom:8px;">
       <div style="font-weight:700;margin-bottom:8px;">${RUCHES_META[id].emoji} ${RUCHES_META[id].nom}</div>
       <div style="display:flex;gap:8px;">
-        <input type="number" placeholder="Latitude" step="0.001" value="${ruchers[id]?.lat||''}"
-          id="lat-${id}" style="flex:1;background:var(--fond);border:1px solid var(--bord);
-          color:var(--texte);border-radius:8px;padding:8px;font-size:13px;">
-        <input type="number" placeholder="Longitude" step="0.001" value="${ruchers[id]?.lng||''}"
-          id="lng-${id}" style="flex:1;background:var(--fond);border:1px solid var(--bord);
-          color:var(--texte);border-radius:8px;padding:8px;font-size:13px;">
+        <input type="number" placeholder="Latitude" step="0.0001" value="${ruchers[id]?.lat||''}"
+          id="lat-${id}" style="flex:1;background:var(--fond);border:1px solid var(--bord);color:var(--texte);border-radius:8px;padding:8px;font-size:13px;">
+        <input type="number" placeholder="Longitude" step="0.0001" value="${ruchers[id]?.lng||''}"
+          id="lng-${id}" style="flex:1;background:var(--fond);border:1px solid var(--bord);color:var(--texte);border-radius:8px;padding:8px;font-size:13px;">
       </div></div>`).join('');
   ORDRE.forEach(id=>{
-    document.getElementById('lat-'+id)?.addEventListener('change',sauvegarderGps);
-    document.getElementById('lng-'+id)?.addEventListener('change',sauvegarderGps);
+    document.getElementById('lat-'+id)?.addEventListener('change',()=>{sauvegarderGps();meteoChargee=false;});
+    document.getElementById('lng-'+id)?.addEventListener('change',()=>{sauvegarderGps();meteoChargee=false;});
   });
 }
 function sauvegarderGps(){
   ORDRE.forEach(id=>{
     ruchers[id]={lat:document.getElementById('lat-'+id)?.value||'',
                  lng:document.getElementById('lng-'+id)?.value||''};
-  });
-  localStorage.setItem('ruchers',JSON.stringify(ruchers));
+  });sauver('ruchers',ruchers);
 }
 async function chargerSeuil(){
   try{const d=await (await fetch(API+'/api/config/seuil')).json();
@@ -764,39 +1251,137 @@ document.getElementById('seuil-input').addEventListener('change',async e=>{
   try{
     await fetch(API+'/api/config/seuil',{method:'POST',
       headers:{'Content-Type':'application/json'},body:JSON.stringify({seuil_kg:val})});
-    document.getElementById('notif-status').textContent=`✅ Seuil mis à jour : alerte si variation ≥ ${val} kg`;
-  }catch{document.getElementById('notif-status').textContent='⚠ Serveur inaccessible.';}
+    document.getElementById('notif-status').textContent='\u2705 Seuil: alerte si variation \u2265 '+val+' kg';
+  }catch{document.getElementById('notif-status').textContent='\u26A0 Serveur inaccessible.';}
 });
 document.getElementById('btn-collecter').addEventListener('click',async()=>{
-  const btn=document.getElementById('btn-collecter');btn.textContent='…';
+  const btn=document.getElementById('btn-collecter');btn.textContent='\u2026';
   try{
     await fetch(API+'/api/collecter-maintenant',{method:'POST'});
-    btn.textContent='✅';
+    btn.textContent='\u2705';
     setTimeout(()=>{btn.textContent='Actualiser';histoCache={};chargerRuches();},2000);
-  }catch{btn.textContent='⚠';setTimeout(()=>btn.textContent='Actualiser',2000);}
+  }catch{btn.textContent='\u26A0';setTimeout(()=>btn.textContent='Actualiser',2000);}
 });
+
+// ── EXPORT PDF
+function exportPDF(){
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF();
+  doc.setFontSize(18);doc.setTextColor(224,169,74);
+  doc.text('Mes Ruches - Rapport',14,20);
+  doc.setFontSize(10);doc.setTextColor(126,138,126);
+  doc.text('G\u00e9n\u00e9r\u00e9 le '+new Date().toLocaleDateString('fr'),14,28);
+  let y=38;
+  // Ruches
+  doc.setFontSize(13);doc.setTextColor(243,233,210);
+  doc.text('Donn\u00e9es des ruches',14,y);y+=8;
+  const rowsRuches=ORDRE.map(id=>{
+    const r=ruchesData[id]?.dernierReleve;
+    const s=calcSante(id);
+    return [RUCHES_META[id].nom,r?r.poids.toFixed(1)+' kg':'-',
+      r?r.temperature+'\u00b0C':'-',s?s+'/100':'-',
+      ruchesData[id]?.variationSemaine!=null?(ruchesData[id].variationSemaine>=0?'+':'')+ruchesData[id].variationSemaine.toFixed(2)+' kg':'-'];
+  });
+  doc.autoTable({startY:y,head:[['Ruche','Poids','Temp.','Sant\u00e9','Variation 7j']],
+    body:rowsRuches,theme:'dark',
+    headStyles:{fillColor:[37,44,37],textColor:[224,169,74]},
+    bodyStyles:{fillColor:[27,33,28],textColor:[243,233,210]},
+    alternateRowStyles:{fillColor:[30,37,30]}});
+  y=doc.lastAutoTable.finalY+10;
+  // Visites
+  if(visites.length){
+    doc.setFontSize(13);doc.setTextColor(243,233,210);
+    doc.text('Visites ('+visites.length+')',14,y);y+=6;
+    doc.autoTable({startY:y,
+      head:[['Date','Ruche','Observations','Reine','\u00c9tat']],
+      body:[...visites].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,20).map(v=>[
+        v.date,RUCHES_META[v.ruche]?.nom||v.ruche,(v.obs||'').slice(0,50),v.reine||'-',v.etat||'-']),
+      theme:'dark',
+      headStyles:{fillColor:[37,44,37],textColor:[224,169,74]},
+      bodyStyles:{fillColor:[27,33,28],textColor:[243,233,210]}});
+    y=doc.lastAutoTable.finalY+10;
+  }
+  // R\u00e9coltes
+  if(recoltes.length){
+    const tot=recoltes.reduce((s,r)=>s+parseFloat(r.kg||0),0);
+    doc.setFontSize(13);doc.text('R\u00e9coltes \u2014 Total: '+tot.toFixed(1)+' kg',14,y);y+=6;
+    doc.autoTable({startY:y,
+      head:[['Date','Ruche','Quantit\u00e9','Notes']],
+      body:recoltes.map(r=>[r.date,RUCHES_META[r.ruche]?.nom||r.ruche,r.kg+' kg',r.notes||'']),
+      theme:'dark',
+      headStyles:{fillColor:[37,44,37],textColor:[224,169,74]},
+      bodyStyles:{fillColor:[27,33,28],textColor:[243,233,210]}});
+  }
+  doc.save('mes-ruches-'+new Date().toISOString().slice(0,10)+'.pdf');
+}
+
+// ── EXPORT EXCEL
+function exportExcel(){
+  const wb=XLSX.utils.book_new();
+  // Feuille Ruches
+  const wsR=XLSX.utils.json_to_sheet(ORDRE.map(id=>{
+    const r=ruchesData[id]?.dernierReleve;const f=fiches[id]||{};
+    return {'Ruche':RUCHES_META[id].nom,'Poids (kg)':r?.poids||'',
+      'Temp\u00e9rature (\u00b0C)':r?.temperature||'','Hygrom\u00e9trie (%)':r?.hygrometrie||'',
+      'Sant\u00e9 (0-100)':calcSante(id)||'','Variation 7j (kg)':ruchesData[id]?.variationSemaine?.toFixed(2)||'',
+      'Race':f.race||'','Reine':f.reine||'','Ann\u00e9e reine':f.annee||''};
+  }));
+  XLSX.utils.book_append_sheet(wb,wsR,'Ruches');
+  // Visites
+  if(visites.length){
+    const wsV=XLSX.utils.json_to_sheet(visites.map(v=>({'Date':v.date,
+      'Ruche':RUCHES_META[v.ruche]?.nom||v.ruche,'Observations':v.obs||'',
+      'Reine':v.reine||'','\u00c9tat':v.etat||''})));
+    XLSX.utils.book_append_sheet(wb,wsV,'Visites');
+  }
+  // R\u00e9coltes
+  if(recoltes.length){
+    const wsRec=XLSX.utils.json_to_sheet(recoltes.map(r=>({'Date':r.date,
+      'Ruche':RUCHES_META[r.ruche]?.nom||r.ruche,'Quantit\u00e9 (kg)':r.kg,'Notes':r.notes||''})));
+    XLSX.utils.book_append_sheet(wb,wsRec,'R\u00e9coltes');
+  }
+  // Varroa
+  if(varroas.length){
+    const wsVr=XLSX.utils.json_to_sheet(varroas.map(v=>({'Date':v.date,
+      'Ruche':RUCHES_META[v.ruche]?.nom||v.ruche,'Produit':v.produit||'','Notes':v.notes||''})));
+    XLSX.utils.book_append_sheet(wb,wsVr,'Varroa');
+  }
+  XLSX.writeFile(wb,'mes-ruches-'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
+
+// ── PARTAGE
+function partagerDonnees(){
+  const data={visites,recoltes,varroas,nourrissements,fiches,ruchers,
+    exporte:new Date().toISOString()};
+  const json=JSON.stringify(data,null,2);
+  const blob=new Blob([json],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;
+  a.download='mes-ruches-backup-'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();URL.revokeObjectURL(url);
+}
 
 // ── NOTIFICATIONS
 const btnNotif=document.getElementById('btn-notif');
 const statNotif=document.getElementById('notif-status');
 async function verifierAbonnement(){
   if(!('serviceWorker' in navigator)||!('PushManager' in window)){
-    statNotif.textContent='⚠ Ouvre l\'app depuis l\'écran d\'accueil pour les notifications.';
+    statNotif.textContent='\u26A0 Ouvre l\'app depuis l\'\u00e9cran d\'accueil pour les notifications.';
     btnNotif.style.display='none';return;
   }
   if(Notification.permission==='granted'){
     const reg=await navigator.serviceWorker.ready;
     const sub=await reg.pushManager.getSubscription();
-    if(sub){btnNotif.textContent='Désactiver';btnNotif.classList.remove('off');
-      statNotif.textContent='🔔 Notifications actives.';}
+    if(sub){btnNotif.textContent='D\u00e9sactiver';btnNotif.classList.remove('off');
+      statNotif.textContent='\u{1F514} Notifications actives.';}
   } else if(Notification.permission==='denied'){
-    statNotif.textContent='🔕 Bloquées — Réglages iPhone > Notifications.';
+    statNotif.textContent='\u{1F514} Bloqu\u00e9es \u2014 R\u00e9glages iPhone > Notifications.';
     btnNotif.classList.add('off');
   }
 }
 btnNotif.addEventListener('click',async()=>{
   if(!('serviceWorker' in navigator)) return;
-  if(btnNotif.textContent==='Désactiver'){
+  if(btnNotif.textContent==='D\u00e9sactiver'){
     const reg=await navigator.serviceWorker.ready;
     const sub=await reg.pushManager.getSubscription();
     if(sub){
@@ -805,18 +1390,17 @@ btnNotif.addEventListener('click',async()=>{
       await sub.unsubscribe();
     }
     btnNotif.textContent='Activer';btnNotif.classList.add('off');
-    statNotif.textContent='🔕 Désactivées.';return;
+    statNotif.textContent='\u{1F514} D\u00e9sactiv\u00e9es.';return;
   }
   const perm=await Notification.requestPermission();
-  if(perm!=='granted'){statNotif.textContent='⚠ Permission refusée.';return;}
+  if(perm!=='granted'){statNotif.textContent='\u26A0 Permission refus\u00e9e.';return;}
   const {key}=await (await fetch(API+'/api/vapid-public-key')).json();
   const reg=await navigator.serviceWorker.ready;
-  const sub=await reg.pushManager.subscribe({userVisibleOnly:true,
-    applicationServerKey:urlB64(key)});
+  const sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlB64(key)});
   await fetch(API+'/api/subscribe',{method:'POST',
     headers:{'Content-Type':'application/json'},body:JSON.stringify(sub)});
-  btnNotif.textContent='Désactiver';btnNotif.classList.remove('off');
-  statNotif.textContent='🔔 Actives — alerte à chaque variation significative.';
+  btnNotif.textContent='D\u00e9sactiver';btnNotif.classList.remove('off');
+  statNotif.textContent='\u{1F514} Actives \u2014 alerte \u00e0 chaque variation significative.';
 });
 function urlB64(b64){
   const pad='='.repeat((4-b64.length%4)%4);
@@ -826,7 +1410,7 @@ function urlB64(b64){
 
 // ── UTILITAIRES
 function formatDate(str){
-  if(!str) return '—';
+  if(!str) return '\u2014';
   const d=new Date(str);
   return d.toLocaleDateString('fr',{day:'2-digit',month:'short',year:'numeric'})+' '+
     d.toLocaleTimeString('fr',{hour:'2-digit',minute:'2-digit'});
@@ -836,19 +1420,13 @@ function formatDateCourt(str){
   return new Date(str).toLocaleDateString('fr',{day:'2-digit',month:'2-digit'});
 }
 function formatDateSimple(str){
-  if(!str) return '—';
+  if(!str) return '\u2014';
   return new Date(str).toLocaleDateString('fr',{day:'2-digit',month:'long',year:'numeric'});
 }
 
-// ── SERVICE WORKER
-if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('/sw.js').catch(console.error);
-}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(console.error);}
 
-// ── DÉMARRAGE
-chargerRuches();
-afficherVisites();
-verifierAbonnement();
+chargerRuches();afficherVisites();verifierAbonnement();
 setInterval(chargerRuches,10*60*1000);
 </script>
 </body>
