@@ -709,7 +709,9 @@ function afficherRuches(){
     const dEmoji=v>0.05?'\u25B2':v<-0.05?'\u25BC':'\u2014';
     const warn=r.poids<5||r.temperature>45;
     const hasH=(d.historique||[]).length>1;
-    const battHtml=r.batterie!=null&&!isNaN(r.batterie)?`<span>\u{1F50B} <b>${r.batterie}%</b></span>`:'';
+    const battVal=r.batterie!=null&&!isNaN(r.batterie)?r.batterie+'%':'--';
+    const battColor=r.batterie!=null&&!isNaN(r.batterie)?(r.batterie<20?'var(--rouge)':r.batterie<40?'var(--ambre)':'var(--texte)'):'var(--gris)';
+    const battHtml=`<span>\u{1F50B} <b style="color:${battColor}">${battVal}</b></span>`;
     const santeColor=sante?couleurSante(sante):'var(--gris)';
     const santeLabel=sante?labelSante(sante):'N/A';
     html+=`<div class="card ${warn?'card-warn':''}" data-id="${id}" style="cursor:pointer;">
