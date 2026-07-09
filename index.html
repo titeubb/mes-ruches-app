@@ -246,7 +246,6 @@ html,body{margin:0;padding:0;background:var(--fond);color:var(--texte);
 
     <!-- *** RUCHES *** -->
     <div id="vue-ruches" class="vue active">
-      <div id="alertes-zone"></div>
       <div id="ruches-liste"><div class="spinner">&#128260; Connexion&#8230;</div></div>
       <div style="height:14px;"></div>
     </div>
@@ -652,7 +651,6 @@ async function chargerRuches(){
       if(!ruchesData[id]) ruchesData[id]={nom:RUCHES_META[id]?.nom||id,dernierReleve:null,historique:[]};
     }
     await chargerVariationsHebdo();
-    afficherAlertes();
     afficherRuches();
   }catch(e){
     document.getElementById('ruches-liste').innerHTML=
