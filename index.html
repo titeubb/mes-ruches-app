@@ -633,6 +633,24 @@ function detecterAlertes(id){
   return alerts;
 }
 
+
+// Batteries (endpoint dédié car BeeZbee ne les met pas dans le CSV)
+async function chargerBatteries(){
+  try{
+    const raw=await (await fetch(API+'/api/batteries')).json();
+    if(!Array.isArray(raw)) return;
+    let updated=false;
+    for(const b of raw){
+      if(ruchesData[b.ruche_id]&&b.batterie!=null){
+        if(!ruchesData[b.ruche_id].dernierReleve) continue;
+        ruchesData[b.ruche_id].dernierReleve.batterie=b.batterie;
+        updated=true;
+      }
+    }
+    if(updated) afficherRuches();
+  }catch(e){console.log('Batteries:',e.message);}
+}
+
 // ── CHARGEMENT RUCHES
 async function chargerRuches(){
   try{
@@ -651,8 +669,8 @@ async function chargerRuches(){
       if(!ruchesData[id]) ruchesData[id]={nom:RUCHES_META[id]?.nom||id,dernierReleve:null,historique:[]};
     }
     await chargerVariationsHebdo();
-    chargerBatteries(); // async, met à jour l'affichage quand disponible
     afficherRuches();
+    setTimeout(chargerBatteries, 500); // batteries après affichage initial
   }catch(e){
     document.getElementById('ruches-liste').innerHTML=
       '<div class="banner banner-warn">\u26A0\uFE0F Impossible de joindre le serveur.<br><small>'+e.message+'</small></div>';
