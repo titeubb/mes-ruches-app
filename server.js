@@ -211,14 +211,20 @@ cron.schedule('5 * * * *', collecterToutesLesRuches);
 
 // ─── API ──────────────────────────────────────────────────────────────────────
 
-// Données courantes de toutes les ruches (dernier relevé + métadonnées)
+// Données courantes de toutes les ruches (dernier relevé + dernière batterie non nulle)
 app.get('/api/ruches', async (req, res) => {
   try {
     const { rows } = await pool.query(`
-      SELECT DISTINCT ON (ruche_id)
-        ruche_id, ruche_nom, date_mesure, poids, temperature, hygrometrie, batterie
-      FROM releves
-      ORDER BY ruche_id, date_mesure DESC
+      SELECT DISTINCT ON (r.ruche_id)
+        r.ruche_id, r.ruche_nom, r.date_mesure, r.poids, r.temperature, r.hygrometrie,
+        COALESCE(r.batterie, b.batterie) AS batterie
+      FROM releves r
+      LEFT JOIN LATERAL (
+        SELECT batterie FROM releves
+        WHERE ruche_id = r.ruche_id AND batterie IS NOT NULL
+        ORDER BY date_mesure DESC LIMIT 1
+      ) b ON true
+      ORDER BY r.ruche_id, r.date_mesure DESC
     `);
     res.json(rows);
   } catch (err) {
