@@ -322,6 +322,47 @@ app.get('/api/batteries', async (req, res) => {
   }
 });
 
+// Debug batterie - voir ce que BeeZbee renvoie
+app.get('/api/debug-batt', async (req, res) => {
+  try {
+    const ruche = RUCHES[1]; // Lac Li Piboulos
+    // Test 1: CSV
+    const csv = await (await fetch(ruche.csvUrl, { timeout: 10000 })).text();
+    const lignes = csv.trim().split('\n');
+    const header = lignes[0];
+    const derniereLigne = lignes[lignes.length - 1];
+    const cols = derniereLigne.split(';');
+
+    // Test 2: Index page
+    const html = await (await fetch(ruche.indexUrl, { timeout: 10000 })).text();
+    const battMatch = html.match(/Batterie[\s\S]{0,30}?(\d+)/i);
+
+    // Test 3: Base de données
+    const { rows } = await pool.query(
+      'SELECT batterie, date_mesure FROM releves WHERE ruche_id=$1 AND batterie IS NOT NULL ORDER BY date_mesure DESC LIMIT 3',
+      [ruche.id]
+    );
+
+    res.json({
+      csv: {
+        header,
+        derniereLigne,
+        nbColonnes: cols.length,
+        col4: cols[4] || 'ABSENT',
+        parsedBatterie: parseFloat(cols[4]) || null
+      },
+      indexPage: {
+        battMatch: battMatch ? battMatch[0] : 'PAS DE MATCH',
+        valeur: battMatch ? battMatch[1] : null,
+        extraitHTML: html.substring(0, 300)
+      },
+      baseDonnees: rows
+    });
+  } catch (err) {
+    res.status(500).json({ erreur: err.message, stack: err.stack });
+  }
+});
+
 // Health check
 app.get('/health', (req, res) => res.json({ ok: true, ts: new Date().toISOString() }));
 
